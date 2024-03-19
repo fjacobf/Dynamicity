@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamicity</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // REGISTER ERROR OVERLAY
+      const showErrorOverlay = err => {
+        window.onerror = (event, source, lineno, colno, err) => {
+          // must be within function call because that's when the element is defined for sure.
+          const ErrorOverlay = customElements.get('vite-error-overlay');
+          // don't open outside vite environment
+          if (!ErrorOverlay) {
+            return;
+          }
+          const overlay = new ErrorOverlay(err);
+          document.body.appendChild(overlay);
+        };
+      }
+
+        window.addEventListener('error', ({ error }) => showErrorOverlay(error))
+        window.addEventListener('unhandledrejection', ({ reason }) => showErrorOverlay(reason))
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
