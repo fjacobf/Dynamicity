@@ -1,4 +1,4 @@
-version: "3.4"
+version: '3.9'
 services:
  frontend:
   build: ./frontend
@@ -7,5 +7,6 @@ services:
     - '8000:8000'
   volumes:
     - ./frontend:/app
+    - /app/node_modules
   stdin_open: true
   tty: true
