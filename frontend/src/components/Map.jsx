@@ -16,7 +16,7 @@ function ResetCenterView(props) {
         },
       )
     }
-  }, [selectPosition])
+  }, [map, selectPosition])
 }
 
 function Map(props) {
