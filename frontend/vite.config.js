@@ -6,13 +6,13 @@ import eslintPlugin from 'vite-plugin-eslint'
 export default defineConfig({
   plugins: [
     react(),
-    eslintPlugin()
+    eslintPlugin(),
   ],
   server: {
     host: true,
     port: 8000,
     watch: {
-      usePolling: true
-    }
-  }
+      usePolling: true,
+    },
+  },
 })
