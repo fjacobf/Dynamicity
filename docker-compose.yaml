@@ -1,12 +1,22 @@
 version: '3.9'
 services:
- frontend:
-  build: ./frontend
-  container_name: Dynamicity_frontend
-  ports:
-    - '8000:8000'
-  volumes:
-    - ./frontend:/app
-    - /app/node_modules
-  stdin_open: true
-  tty: true
+  frontend:
+    build: ./frontend
+    container_name: Dynamicity_frontend
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
+  backend:
+    build: ./backend
+    container_name: Dynamicity_backend
+    ports:
+      - '5000:8000'  
+    volumes:
+      - ./backend:/app
+    stdin_open: true
+    tty: true
