@@ -1,10 +1,17 @@
-from flask import Flask # type: ignore
+from fastapi import FastAPI, HTTPException
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
+@app.get('/')
 def hello():
-    return 'Hello from the backend!'
+    return {'message': 'Hello from the backend!'}
 
-if __name__ == '__main__':
-    app.run(host='localhost', port=5000)
+@app.get('/api/data')
+def get_data():
+    data = {'name': 'John', 'age': 30}
+    return data
+
+@app.post('/api/submit')
+def submit_data(data: dict):
+    # Do something with the submitted data
+    return {'message': 'Data received successfully'}

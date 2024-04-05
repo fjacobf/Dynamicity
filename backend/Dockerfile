@@ -16,5 +16,8 @@ EXPOSE 5000
 # Define environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Command to run the application
-CMD ["python", "app.py"]
+# Install uvicorn
+RUN pip install fastapi uvicorn
+
+# Command to run the application using uvicorn
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
