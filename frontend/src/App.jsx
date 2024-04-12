@@ -6,7 +6,6 @@ import SearchBar from './components/SearchBar'
 function App() {
   const [selectPosition, setSelectPosition] = useState(null)
 
-  console.log(selectPosition)
   return (
     <>
       <SearchBar setSelectPosition={setSelectPosition} />
