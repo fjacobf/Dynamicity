@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
+import { Test } from '../classes.js'
 
 function ResetCenterView(props) {
   const { selectPosition } = props
@@ -22,6 +23,8 @@ function ResetCenterView(props) {
 }
 
 function Map(props) {
+  let m1 = new Test()
+  m1.hello()
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
@@ -54,7 +57,6 @@ function Map(props) {
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
-
       <FeatureGroup>
         <EditControl
           position="topleft"
