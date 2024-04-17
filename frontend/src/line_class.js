@@ -25,7 +25,7 @@ export class LinesManager {
 
   // Method to get all lines
   getAllLines() {
-    return this.lines
+    console.log('All lines stored:', this.lines)
   }
 
   // Method to remove a line

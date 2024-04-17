@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
@@ -30,7 +30,7 @@ function Map(props) {
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
-  const [linesManager] = useState(new LinesManager())
+  let linesManager = new LinesManager()
 
   const onCreated = (e) => {
     const { layerType, layer } = e
@@ -53,12 +53,8 @@ function Map(props) {
         console.log(`Latitude: ${latlng.lat}, Longitude: ${latlng.lng}`)
       })
     }
+    linesManager.getAllLines()
   }
-
-  useEffect(() => {
-    // This logs the state of the lines whenever it changes.
-    console.log('All lines stored:', linesManager.getAllLines())
-  }, [linesManager])
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
