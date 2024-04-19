@@ -1,8 +1,9 @@
+/* eslint-disable @stylistic/semi */
 import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
-import { Test } from '../classes.js'
+import { Test, Point } from '../classes.js'
 
 function ResetCenterView(props) {
   const { selectPosition } = props
@@ -23,6 +24,9 @@ function ResetCenterView(props) {
 }
 
 function Map(props) {
+  // List of points
+
+  var points = []
   let m1 = new Test()
   m1.hello()
   // eslint-disable-next-line react/prop-types
@@ -36,7 +40,9 @@ function Map(props) {
     if (layerType === 'marker') {
       // Extract coordinates of the created marker
       const latlng = layer.getLatLng()
-      console.log(`Latitude: ${latlng.lat}, Longitude: ${latlng.lng}`)
+      let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id)
+      point.logCoordinates()
+      points.push(point)
     }
 
     if (layerType === 'polyline') {
@@ -55,14 +61,37 @@ function Map(props) {
     }
   }
 
+  const onEdited = (e) => {
+    console.log('onEdited event triggered');
+    const editedLayers = e.layers.getLayers();
+    editedLayers.forEach((editedLayer) => {
+      const editedLatLng = editedLayer.getLatLng();
+      // Find the corresponding point in the points list
+      const editedPointIndex = points.findIndex(
+        point =>
+          point.getId() === editedLayer._leaflet_id,
+      );
+
+      if (editedPointIndex !== -1) {
+        // Update the corresponding point's coordinates
+        points[editedPointIndex].setLatitude(editedLatLng.lat);
+        points[editedPointIndex].setLongitude(editedLatLng.lng);
+        // Log the updated coordinates
+        points[editedPointIndex].logCoordinates();
+      }
+    });
+  };
+
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
       <FeatureGroup>
         <EditControl
           position="topleft"
           onCreated={onCreated}
+          onEdited={onEdited}
           draw={{ rectangle: false }}
         />
+        <Marker position={[51.505, -0.09]}></Marker>
       </FeatureGroup>
 
       <TileLayer
