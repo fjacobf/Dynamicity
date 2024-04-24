@@ -58,7 +58,7 @@ function Map(props) {
       const pointObjects = layer.getLatLngs()[0].map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
       let polygon = new classesJs.Polygon(pointObjects, 'new Polygon', layer._leaflet_id)
       polygons.push(polygon)
-      console.log('All pols stored:', polygons)
+      console.log('All polygons stored:', polygons)
     }
   }
 
@@ -91,10 +91,23 @@ function Map(props) {
         else {
           console.log('No line found with the ID:', editedLayer._leaflet_id)
         }
+        lines.getAllLines() // Log all lines to console after editing
       }
-    })
 
-    lines.getAllLines() // Log all lines to console after editing
+      if (editedLayer instanceof L.Polygon) {
+        const newPoints = editedLayer.getLatLngs()[0].map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
+        const polygonToEdit = polygons.find(polygon => polygon.getId() === editedLayer._leaflet_id)
+
+        if (polygonToEdit) {
+          polygonToEdit.updatePoints(newPoints)
+          console.log('Updated polygon:', polygonToEdit)
+        }
+        else {
+          console.log('No polygon found with the ID:', editedLayer._leaflet_id)
+        }
+      }
+      console.log('All polygons stored:', polygons)
+    })
   }
 
   return (
