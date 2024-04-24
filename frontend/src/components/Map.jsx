@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
-import { Test } from '../classes.js'
-import { LinesManager } from '../line_class.js'
+import * as classesJs from '../classes.js'
+import L from 'leaflet'
 
 function ResetCenterView(props) {
   const { selectPosition } = props
@@ -24,13 +24,17 @@ function ResetCenterView(props) {
 }
 
 function Map(props) {
-  let m1 = new Test()
+  // List of points
+
+  var points = []
+  var polygons = []
+  let m1 = new classesJs.Test()
   m1.hello()
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
-  let linesManager = new LinesManager()
+  let lines = new classesJs.LinesManager()
 
   const onCreated = (e) => {
     const { layerType, layer } = e
@@ -38,22 +42,59 @@ function Map(props) {
     if (layerType === 'marker') {
       // Extract coordinates of the created marker
       const latlng = layer.getLatLng()
-      console.log(`Latitude: ${latlng.lat}, Longitude: ${latlng.lng}`)
+      let point = new classesJs.Point(latlng.lat, latlng.lng, layer._leaflet_id)
+      point.logCoordinates()
+      points.push(point)
     }
 
     if (layerType === 'polyline') {
-      const coordinates = layer.getLatLngs().map(latlng => ({ lat: latlng.lat, lng: latlng.lng }))
-      linesManager.addLine(coordinates)
+      const pointObjects = layer.getLatLngs().map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
+      let line = new classesJs.Line(pointObjects, 'new line', layer._leaflet_id)
+      lines.addLine(line)
+      lines.getAllLines()
     }
 
     if (layerType === 'polygon') {
-      // Extract coordinates of the created polygon
-      const latlngs = layer.getLatLngs()[0] // Get the first ring of the polygon
-      latlngs.forEach((latlng) => {
-        console.log(`Latitude: ${latlng.lat}, Longitude: ${latlng.lng}`)
-      })
+      const pointObjects = layer.getLatLngs()[0].map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
+      let polygon = new classesJs.Polygon(pointObjects, 'new Polygon', layer._leaflet_id)
+      polygons.push(polygon)
+      console.log('All pols stored:', polygons)
     }
-    linesManager.getAllLines()
+  }
+
+  const onEdited = (e) => {
+    console.log('onEdited event triggered')
+    const editedLayers = e.layers.getLayers()
+
+    editedLayers.forEach((editedLayer) => {
+      // Check if the edited layer is a marker
+      if (editedLayer instanceof L.Marker) {
+        const editedLatLng = editedLayer.getLatLng()
+        const editedPointIndex = points.findIndex(point => point.getId() === editedLayer._leaflet_id)
+
+        if (editedPointIndex !== -1) {
+          points[editedPointIndex].setLatitude(editedLatLng.lat)
+          points[editedPointIndex].setLongitude(editedLatLng.lng)
+          points[editedPointIndex].logCoordinates()
+        }
+      }
+
+      // Check if the edited layer is a polyline
+      if (editedLayer instanceof L.Polyline) {
+        const newPoints = editedLayer.getLatLngs().map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
+        const lineToEdit = lines.findLine(editedLayer._leaflet_id)
+
+        if (lineToEdit) {
+          lineToEdit.updatePoints(newPoints)
+          console.log('Updated line:', lineToEdit)
+        }
+        else {
+          console.log('No line found with the ID:', editedLayer._leaflet_id)
+        }
+      }
+    })
+
+    lines.getAllLines() // Log all lines to console after editing
   }
 
   return (
@@ -62,8 +103,13 @@ function Map(props) {
         <EditControl
           position="topleft"
           onCreated={onCreated}
-          draw={{ rectangle: false }}
+          onEdited={onEdited}
+          // onDeleted={handleDelete}
+          draw={{
+            rectangle: false,
+          }}
         />
+
       </FeatureGroup>
 
       <TileLayer
