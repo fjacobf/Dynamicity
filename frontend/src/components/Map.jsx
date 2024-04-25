@@ -34,7 +34,7 @@ function Map(props) {
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
-  let lines = new classesJs.LinesManager()
+  var lines = []
 
   const onCreated = (e) => {
     const { layerType, layer } = e
@@ -50,8 +50,8 @@ function Map(props) {
     if (layerType === 'polyline') {
       const pointObjects = layer.getLatLngs().map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
       let line = new classesJs.Line(pointObjects, 'new line', layer._leaflet_id)
-      lines.addLine(line)
-      lines.getAllLines()
+      lines.push(line)
+      console.log('All lines stored:', lines)
     }
 
     if (layerType === 'polygon') {
@@ -82,7 +82,7 @@ function Map(props) {
       // Check if the edited layer is a polyline
       if (editedLayer instanceof L.Polyline) {
         const newPoints = editedLayer.getLatLngs().map(latlng => new classesJs.Point(latlng.lat, latlng.lng))
-        const lineToEdit = lines.findLine(editedLayer._leaflet_id)
+        const lineToEdit = lines.find(line => line.getId() === editedLayer._leaflet_id)
 
         if (lineToEdit) {
           lineToEdit.updatePoints(newPoints)
@@ -91,7 +91,8 @@ function Map(props) {
         else {
           console.log('No line found with the ID:', editedLayer._leaflet_id)
         }
-        lines.getAllLines() // Log all lines to console after editing
+        console.log('All lines stored:', lines)
+        // lines.getAllLines() // Log all lines to console after editing
       }
 
       if (editedLayer instanceof L.Polygon) {
@@ -105,11 +106,49 @@ function Map(props) {
         else {
           console.log('No polygon found with the ID:', editedLayer._leaflet_id)
         }
+        console.log('All polygons stored:', polygons)
       }
-      console.log('All polygons stored:', polygons)
     })
   }
 
+  const handleDelete = (e) => {
+    console.log('handleDelete event triggered')
+    const removedLayers = e.layers.getLayers()
+
+    removedLayers.forEach((removedLayer) => {
+      // Check if the removed layer is a marker
+      if (removedLayer instanceof L.Marker) {
+        const removedPointIndex = points.findIndex(point => point.getId() === removedLayer._leaflet_id)
+
+        if (removedPointIndex !== -1) {
+          points.splice(removedPointIndex, 1)
+          console.log(`Point ${removedPointIndex} removed.`)
+        }
+      }
+
+      // Check if the removed layer is a polyline
+      if (removedLayer instanceof L.Polyline) {
+        const lineToRemoveIndex = lines.findIndex(line => line.getId() === removedLayer._leaflet_id)
+
+        if (lineToRemoveIndex !== -1) {
+          lines.splice(lineToRemoveIndex, 1)
+          console.log(`Removed polygon: ${lineToRemoveIndex}`)
+        }
+        console.log('All lines stored:', lines)
+      }
+
+      // Check if the removed layer is a polygon
+      if (removedLayer instanceof L.Polygon) {
+        const polygonToRemoveIndex = polygons.findIndex(polygon => polygon.getId() === removedLayer._leaflet_id)
+
+        if (polygonToRemoveIndex !== -1) {
+          polygons.splice(polygonToRemoveIndex, 1)
+          console.log(`Removed polygon: ${polygonToRemoveIndex}`)
+        }
+        console.log('All polygons stored:', polygons)
+      }
+    })
+  }
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
       <FeatureGroup>
@@ -117,7 +156,7 @@ function Map(props) {
           position="topleft"
           onCreated={onCreated}
           onEdited={onEdited}
-          // onDeleted={handleDelete}
+          onDeleted={handleDelete}
           draw={{
             rectangle: false,
           }}

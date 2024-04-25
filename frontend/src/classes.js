@@ -5,10 +5,10 @@ export class Test {
 }
 
 export class Point {
-  constructor(lat, lon, leafletId) {
+  constructor(lat, lon, id) {
     this.lat = lat
     this.lon = lon
-    this.leafletId = leafletId
+    this.id = id
   }
 
   logCoordinates() {
@@ -32,7 +32,7 @@ export class Point {
   }
 
   getId() {
-    return this.leafletId
+    return this.id
   }
 
   distanceTo(otherPoint) {
