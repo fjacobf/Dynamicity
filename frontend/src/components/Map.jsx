@@ -1,9 +1,11 @@
+/* eslint-disable @stylistic/semi */
 import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import * as classesJs from '../classes.js'
 import L from 'leaflet'
+import { Test, Point } from '../classes.js'
 
 function ResetCenterView(props) {
   const { selectPosition } = props
@@ -29,6 +31,7 @@ function Map(props) {
   var points = []
   var polygons = []
   let m1 = new classesJs.Test()
+  let m1 = new Test()
   m1.hello()
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
@@ -43,6 +46,7 @@ function Map(props) {
       // Extract coordinates of the created marker
       const latlng = layer.getLatLng()
       let point = new classesJs.Point(latlng.lat, latlng.lng, layer._leaflet_id)
+      let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id)
       point.logCoordinates()
       points.push(point)
     }
@@ -149,6 +153,25 @@ function Map(props) {
       }
     })
   }
+    console.log('onEdited event triggered');
+    const editedLayers = e.layers.getLayers();
+    editedLayers.forEach((editedLayer) => {
+      const editedLatLng = editedLayer.getLatLng();
+      // Find the corresponding point in the points list
+      const editedPointIndex = points.findIndex(
+        point =>
+          point.getId() === editedLayer._leaflet_id,
+      );
+
+      if (editedPointIndex !== -1) {
+        // Update the corresponding point's coordinates
+        points[editedPointIndex].setLatitude(editedLatLng.lat);
+        points[editedPointIndex].setLongitude(editedLatLng.lng);
+        // Log the updated coordinates
+        points[editedPointIndex].logCoordinates();
+      }
+    });
+  };
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
       <FeatureGroup>
@@ -162,6 +185,9 @@ function Map(props) {
           }}
         />
 
+          draw={{ rectangle: false }}
+        />
+        <Marker position={[51.505, -0.09]}></Marker>
       </FeatureGroup>
 
       <TileLayer
