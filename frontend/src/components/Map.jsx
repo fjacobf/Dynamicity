@@ -28,12 +28,12 @@ function Map(props) {
   // List of points
 
   var points = []
+  var lines = []
   var polygons = []
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
-  var lines = []
 
   const onCreated = (e) => {
     const { layerType, layer } = e
