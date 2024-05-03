@@ -6,8 +6,8 @@ export class DSManager {
     this.polygons = []
   }
 
-  addPoint(lat, long, id) {
-    let point = new Point (lat, long, id)
+  addPoint(id, coordinates) {
+    let point = new Point (coordinates.lat, coordinates.lng, id)
     this.points.push(point)
     return point
   }
@@ -21,13 +21,12 @@ export class DSManager {
     return this.points
   }
 
-  editPoint(id, new_lat, new_lng) {
+  editPoint(id, new_lat_lng) {
     const editedPointIndex = this.points.findIndex(point => point.getId() === id)
 
     if (editedPointIndex !== -1) {
-      this.points[editedPointIndex].setLatitude(new_lat)
-      this.points[editedPointIndex].setLongitude(new_lng)
-      this.points[editedPointIndex].logCoordinates()
+      this.points[editedPointIndex].setLatitude(new_lat_lng.lat)
+      this.points[editedPointIndex].setLongitude(new_lat_lng.lng)
     }
 
     return this.points[editedPointIndex]
@@ -45,9 +44,9 @@ export class DSManager {
   }
 
   // Method to add a new line
-  addLine(points) {
-    const line = new Line(points, 'Creating new line')
-    // add the possibility to add a description alongside the edge info and points
+  addLine(id, points) {
+    const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
+    const line = new Line(pointObjects, 'New line', id)
     this.lines.push(line)
     return line
   }
@@ -68,18 +67,17 @@ export class DSManager {
 
     if (lineToEdit) {
       lineToEdit.updatePoints(newPoints)
-      console.log('Updated line:', lineToEdit)
+      return lineToEdit
     }
     else {
       console.log('No line found with the ID:', id)
+      return null
     }
-    console.log('All lines stored:', this.lines)
-    // lines.getAllLines() // Log all lines to console after editing
   }
 
   // Method to remove a line
   removeLine(id) {
-    const lineToRemoveIndex = this.lines.findIndex(line => line.getId() === id._leaflet_id)
+    const lineToRemoveIndex = this.lines.findIndex(line => line.getId() === id)
 
     if (lineToRemoveIndex !== -1) {
       this.lines.splice(lineToRemoveIndex, 1)
@@ -88,11 +86,10 @@ export class DSManager {
     return false
   }
 
-  addPolygon(id, LatLngs) {
-    const pointObjects = LatLngs.map(latlng => new Point(latlng.lat, latlng.lng))
+  addPolygon(id, points) {
+    const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
     let polygon = new Polygon(pointObjects, 'new Polygon', id)
     this.polygons.push(polygon)
-    console.log('All polygons stored:', this.polygons)
   }
 
   findPolygon(id) {
@@ -104,18 +101,18 @@ export class DSManager {
     return this.polygons
   }
 
-  editPolygon(id, LatLngs) {
-    const newPoints = LatLngs.map(latlng => new Point(latlng.lat, latlng.lng))
+  editPolygon(id, points) {
+    const newPoints = points.map(latlng => new Point(latlng.lat, latlng.lng))
     const polygonToEdit = this.polygons.find(polygon => polygon.getId() === id)
 
     if (polygonToEdit) {
       polygonToEdit.updatePoints(newPoints)
-      console.log('Updated polygon:', polygonToEdit)
+      return polygonToEdit
     }
     else {
       console.log('No polygon found with the ID:', id)
+      return null
     }
-    console.log('All polygons stored:', this.polygons)
   }
 
   removePolygon(id) {
@@ -123,9 +120,8 @@ export class DSManager {
 
     if (polygonToRemoveIndex !== -1) {
       this.polygons.splice(polygonToRemoveIndex, 1)
-      console.log(`Removed polygon: ${polygonToRemoveIndex}`)
+      return polygonToRemoveIndex
     }
-    console.log('All polygons stored:', this.polygons)
   }
 }
 
