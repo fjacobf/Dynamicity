@@ -1,11 +1,15 @@
 /* eslint-disable @stylistic/semi */
+import L from 'leaflet'
+import 'leaflet-draw/dist/leaflet.draw.css'
 import { useEffect } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
-import 'leaflet-draw/dist/leaflet.draw.css'
-import L from 'leaflet'
 import { DSManager } from '../data_structure.js'
+import geoJson from '../data/map.json'
 
+var ds = new DSManager();
+ds.populateGeoJson(geoJson);
+console.log(ds)
 function ResetCenterView(props) {
   const { selectPosition } = props
   const map = useMap()
@@ -25,12 +29,12 @@ function ResetCenterView(props) {
 }
 
 function Map(props) {
-  // List of points
-  var ds = new DSManager();
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
+
+  // Access the Leaflet element ID after the component is mounted
 
   const onCreated = (e) => {
     const { layerType, layer } = e
@@ -97,7 +101,9 @@ function Map(props) {
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
+
       <FeatureGroup>
+
         <EditControl
           position="topleft"
           onCreated={onCreated}
@@ -107,13 +113,19 @@ function Map(props) {
             rectangle: false,
           }}
         />
-        <Marker position={[51.505, -0.09]}></Marker>
+
+        {ds.getPoints().map(point =>
+          // eslint-disable-next-line react/jsx-key
+          <Marker key={point.id} position={[point.lat, point.lon]} leafletId={point.id} />,
+        )}
+
       </FeatureGroup>
 
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
       {selectPosition && (
         <Marker position={locationSelection}>
           <Popup>
@@ -121,7 +133,9 @@ function Map(props) {
           </Popup>
         </Marker>
       )}
+
       <ResetCenterView selectPosition={selectPosition} />
+
     </MapContainer>
   )
 }

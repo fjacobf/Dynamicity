@@ -32,6 +32,16 @@ export class DSManager {
     return this.points[editedPointIndex]
   }
 
+  editPointID(new_id, lat_lng) {
+    const editedPointIndex = this.points.findIndex(point => point.getLatitude() === lat_lng.lat && point.getLongitude() === lat_lng.lon)
+
+    if (editedPointIndex !== -1) {
+      this.points[editedPointIndex].setId(new_id)
+    }
+
+    return this.points[editedPointIndex]
+  }
+
   removePoint(id) { // Faz sentido retornar o id do ponto removido?
     const removedPointIndex = this.points.findIndex(point => point.getId() === id)
 
@@ -123,6 +133,15 @@ export class DSManager {
       return polygonToRemoveIndex
     }
   }
+
+  populateGeoJson(geoJson) {
+    geoJson.features.forEach((feature, x = 0) => {
+      if (feature.geometry.type == 'Point') {
+        console.log(feature)
+        this.addPoint(x, { lat: feature.geometry.coordinates[0], lng: feature.geometry.coordinates[1] })
+      }
+    });
+  }
 }
 
 export class Point {
@@ -142,6 +161,10 @@ export class Point {
 
   setLongitude(lon) {
     this.lon = lon
+  }
+
+  setId(id) {
+    this.id = id
   }
 
   getLatitude() {
