@@ -2,14 +2,13 @@
 import L from 'leaflet'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvent, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
 
 var ds = new DSManager();
-ds.populateGeoJson(geoJson);
-console.log(ds)
+ds.populateGeoJson(geoJson)
 function ResetCenterView(props) {
   const { selectPosition } = props
   const map = useMap()
@@ -26,6 +25,18 @@ function ResetCenterView(props) {
       )
     }
   }, [map, selectPosition])
+}
+
+function MyComponent() {
+  // eslint-disable-next-line no-unused-vars
+  const map = useMapEvent('layeradd', (event) => {
+    const { layer } = event;
+    if (layer instanceof L.Marker) {
+      console.log(layer._leaflet_id)
+      // ds.addPoint(layer._leaflet_id, layer.getLatLngs())
+    }
+  })
+  return null
 }
 
 function Map(props) {
@@ -56,6 +67,8 @@ function Map(props) {
 
   const onEdited = (e) => {
     const editedLayers = e.layers.getLayers()
+
+    console.log(e.layers.getLayers())
 
     editedLayers.forEach((editedLayer) => {
       // Por algum motivo um poligono tambem é uma instancia de polyline (???)
@@ -103,6 +116,7 @@ function Map(props) {
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
 
       <FeatureGroup>
+        <MyComponent />
 
         <EditControl
           position="topleft"
@@ -115,7 +129,6 @@ function Map(props) {
         />
 
         {ds.getPoints().map(point =>
-          // eslint-disable-next-line react/jsx-key
           <Marker key={point.id} position={[point.lat, point.lon]} leafletId={point.id} />,
         )}
 
@@ -133,7 +146,6 @@ function Map(props) {
           </Popup>
         </Marker>
       )}
-
       <ResetCenterView selectPosition={selectPosition} />
 
     </MapContainer>

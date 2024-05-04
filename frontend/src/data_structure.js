@@ -137,7 +137,6 @@ export class DSManager {
   populateGeoJson(geoJson) {
     geoJson.features.forEach((feature, x = 0) => {
       if (feature.geometry.type == 'Point') {
-        console.log(feature)
         this.addPoint(x, { lat: feature.geometry.coordinates[0], lng: feature.geometry.coordinates[1] })
       }
     });
