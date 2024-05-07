@@ -8,11 +8,17 @@ import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
 
 var ds = new DSManager();
-ds.populateGeoJson(geoJson)
+var pontos = []
+
+geoJson.features.forEach((feature) => {
+  if (feature.geometry.type == 'Point') {
+    pontos.push([feature.geometry.coordinates[0], feature.geometry.coordinates[1]]);
+  }
+})
+
 function ResetCenterView(props) {
   const { selectPosition } = props
   const map = useMap()
-
   useEffect(() => {
     if (selectPosition) {
       map.flyTo(
@@ -27,13 +33,13 @@ function ResetCenterView(props) {
   }, [map, selectPosition])
 }
 
-function MyComponent() {
+function Events() {
   // eslint-disable-next-line no-unused-vars
   const map = useMapEvent('layeradd', (event) => {
     const { layer } = event;
     if (layer instanceof L.Marker) {
-      console.log(layer._leaflet_id)
-      // ds.addPoint(layer._leaflet_id, layer.getLatLngs())
+      // console.log(layer._leaflet_id)
+      ds.addPoint(layer._leaflet_id, layer.getLatLng())
     }
   })
   return null
@@ -113,10 +119,11 @@ function Map(props) {
   }
 
   return (
-    <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
+    <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
 
       <FeatureGroup>
-        <MyComponent />
+
+        <Events />
 
         <EditControl
           position="topleft"
@@ -128,9 +135,18 @@ function Map(props) {
           }}
         />
 
-        {ds.getPoints().map(point =>
+        {/* {ds.getPoints().map(point =>
           <Marker key={point.id} position={[point.lat, point.lon]} leafletId={point.id} />,
-        )}
+        )} */}
+
+        {
+          pontos.map(ponto =>
+            // eslint-disable-next-line react/jsx-key
+            <Marker position={ponto} />,
+          )
+        }
+
+        {console.log(ds)}
 
       </FeatureGroup>
 
