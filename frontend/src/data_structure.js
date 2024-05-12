@@ -7,9 +7,12 @@ export class DSManager {
   }
 
   addPoint(id, coordinates) {
-    let point = new Point (coordinates.lat, coordinates.lng, id)
-    this.points.push(point)
-    return point
+    if (this.points.some(point => point.getId() === id)) {
+      console.log(`Point with ID ${id} already exists. Skipping add.`);
+      return; // Early return to prevent addition
+    }
+    let point = new Point(coordinates.lat, coordinates.lng, id);
+    this.points.push(point);
   }
 
   findPoint(id) {

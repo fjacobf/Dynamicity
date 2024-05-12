@@ -2,7 +2,7 @@
 import L from 'leaflet'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvent, FeatureGroup } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
@@ -34,15 +34,29 @@ function ResetCenterView(props) {
 }
 
 function Events() {
-  // eslint-disable-next-line no-unused-vars
-  const map = useMapEvent('layeradd', (event) => {
-    const { layer } = event;
-    if (layer instanceof L.Marker) {
-      // console.log(layer._leaflet_id)
-      ds.addPoint(layer._leaflet_id, layer.getLatLng())
-    }
-  })
-  return null
+  const map = useMap();
+
+  useEffect(() => {
+    const handleLayerAdd = (event) => {
+      const { layer } = event;
+      console.log('Layer add event triggered')
+      console.log('Type of layer added:', layer instanceof L.Marker ? 'Marker' : 'Other')
+      if (layer instanceof L.Marker) {
+        console.log('Marker added with ID:', layer._leaflet_id)
+        console.log('Marker coordinates:', layer.getLatLng())
+        console.log('State of DSManager before layer: ', JSON.stringify(ds, null, 2))
+        ds.addPoint(layer._leaflet_id, layer.getLatLng())
+        console.log('State of DSManager after layer: ', JSON.stringify(ds, null, 2))
+      }
+    };
+
+    map.on('layeradd', handleLayerAdd)
+    return () => {
+      map.off('layeradd', handleLayerAdd)
+    };
+  }, [map]);
+
+  return null;
 }
 
 function Map(props) {
@@ -57,7 +71,10 @@ function Map(props) {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
+      console.log('Marker creation event fired')
+      console.log('State of DSManager before creation: ', ds)
       ds.addPoint(layer._leaflet_id, layer.getLatLng())
+      console.log('State of DSManager after creation: ', ds)
     }
 
     if (layerType === 'polyline') {
@@ -67,7 +84,7 @@ function Map(props) {
     if (layerType === 'polygon') {
       ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
     }
-    console.log('create: ')
+    // console.log('create: ')
     console.log(ds)
   }
 
@@ -121,9 +138,9 @@ function Map(props) {
   return (
     <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
 
-      <FeatureGroup>
+      <Events />
 
-        <Events />
+      <FeatureGroup>
 
         <EditControl
           position="topleft"
