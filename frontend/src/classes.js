@@ -1,9 +1,15 @@
 /* eslint-disable @stylistic/semi */
 export class Point {
-  constructor(lat, lon, id) {
+  constructor(lat, lon, id, description) {
     this.lat = lat
     this.lon = lon
     this.id = id
+    this.description = description
+  }
+
+  // Method to set or update the description of the line
+  setDescription(description) {
+    this.description = description
   }
 
   logCoordinates() {
