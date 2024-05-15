@@ -2,18 +2,48 @@
 import L from 'leaflet'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import { useEffect, useMemo } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
 
 var ds = new DSManager();
 var pontos = []
-var fim = false
+var linhas = []
+var poligonos = []
+var fimpoints = false
+var fimpolygons = false
+var fimlines = false
+
+const areCoordinatesEqual = (coords1, coords2) => {
+  if (coords1.length !== coords2.length) return false;
+  for (let i = 0; i < coords1.length; i++) {
+    if (coords1[i][0] !== coords2[i][0] || coords1[i][1] !== coords2[i][1]) {
+      return false;
+    }
+  }
+  return true;
+};
 
 geoJson.features.forEach((feature) => {
   if (feature.geometry.type == 'Point') {
-    pontos.push([feature.geometry.coordinates[0], feature.geometry.coordinates[1]]);
+    const [lat, lng] = feature.geometry.coordinates;
+    pontos.push([lat, lng]);
+  }
+  else if (feature.geometry.type == 'LineString') {
+    const lineCoords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+    if (lineCoords.length > 0) {
+      linhas.push(lineCoords);
+    }
+  }
+  else if (feature.geometry.type == 'Polygon') {
+    var polyCoords = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+    if (polyCoords.length > 1) {
+      if (areCoordinatesEqual([polyCoords[0]], [polyCoords[polyCoords.length - 1]])) {
+        polyCoords.pop();
+      }
+      poligonos.push(polyCoords);
+    }
   }
 })
 
@@ -40,31 +70,42 @@ function Events() {
   useEffect(() => {
     const handleLayerAdd = (event) => {
       const { layer } = event;
-      console.log('Layer add event triggered')
-      console.log('Type of layer added:', layer instanceof L.Marker ? 'Marker' : 'Other')
-      let isPointExisting = false
       if (layer instanceof L.Marker) {
+        let isPointExisting = false
         const markerLat = layer.getLatLng().lat
         const markerLng = layer.getLatLng().lng
         isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
-      }
-      if (layer instanceof L.Marker && layer.editing._marker._leaflet_id !== layer._leaflet_id) {
-        console.log('Marker added with ID:', layer._leaflet_id)
-        console.log('Marker coordinates:', layer.getLatLng())
-        console.log('State of DSManager before layer: ', JSON.stringify(ds, null, 2))
-        ds.addPoint(layer._leaflet_id, layer.getLatLng())
-        console.log('State of DSManager after layer: ', JSON.stringify(ds, null, 2))
-      }
-      else if (layer instanceof L.Marker && isPointExisting && !fim) {
-        console.log('Marker added with ID:', layer._leaflet_id)
-        console.log('Marker coordinates:', layer.getLatLng())
-        console.log('State of DSManager before layer: ', JSON.stringify(ds, null, 2))
-        ds.addPoint(layer._leaflet_id, layer.getLatLng())
-        console.log('State of DSManager after layer: ', JSON.stringify(ds, null, 2))
+        if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
+          ds.addPoint(layer._leaflet_id, layer.getLatLng())
+        }
       }
 
-      if (pontos.length == ds.points.length && !fim) {
-        fim = true
+      if (layer instanceof L.Polyline) {
+        const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
+        const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
+        if (isLineExisting && !fimlines) {
+          ds.addLine(layer._leaflet_id, layer.getLatLngs())
+        }
+      }
+
+      if (layer instanceof L.Polygon) {
+        const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
+        const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
+        if (isPolygonExisting && !fimpolygons) {
+          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+        }
+      }
+
+      if (pontos.length == ds.points.length && !fimpoints) {
+        fimpoints = true
+      }
+
+      if (linhas.length == ds.lines.length && !fimlines) {
+        fimlines = true
+      }
+
+      if (poligonos.length == ds.polygons.length && !fimpolygons) {
+        fimpolygons = true
       }
     };
 
@@ -89,10 +130,7 @@ function Map(props) {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      console.log('Marker creation event fired')
-      console.log('State of DSManager before creation: ', ds)
       ds.addPoint(layer._leaflet_id, layer.getLatLng())
-      console.log('State of DSManager after creation: ', ds)
     }
 
     if (layerType === 'polyline') {
@@ -102,25 +140,20 @@ function Map(props) {
     if (layerType === 'polygon') {
       ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
     }
-    // console.log('create: ')
+    console.log('create: ')
     console.log(ds)
   }
 
   const onEdited = (e) => {
     const editedLayers = e.layers.getLayers()
 
-    console.log(e.layers.getLayers())
-
     editedLayers.forEach((editedLayer) => {
-      // Por algum motivo um poligono tambem é uma instancia de polyline (???)
       if (editedLayer instanceof L.Polygon) {
         ds.editPolygon(editedLayer._leaflet_id, editedLayer.getLatLngs()[0])
       }
-      // Check if the edited layer is a polyline
       else if (editedLayer instanceof L.Polyline) {
         ds.editLine(editedLayer._leaflet_id, editedLayer.getLatLngs())
       }
-      // Check if the edited layer is a marker
       else if (editedLayer instanceof L.Marker) {
         ds.editPoint(editedLayer._leaflet_id, editedLayer.getLatLng())
       }
@@ -134,17 +167,14 @@ function Map(props) {
     const removedLayers = e.layers.getLayers()
 
     removedLayers.forEach((removedLayer) => {
-      // Check if the removed layer is a marker
       if (removedLayer instanceof L.Marker) {
         ds.removePoint(removedLayer._leaflet_id)
       }
 
-      // Check if the removed layer is a polyline
       if (removedLayer instanceof L.Polyline) {
         ds.removeLine(removedLayer._leaflet_id)
       }
 
-      // Check if the removed layer is a polygon
       if (removedLayer instanceof L.Polygon) {
         ds.removePolygon(removedLayer._leaflet_id)
       }
@@ -160,6 +190,22 @@ function Map(props) {
       )}
     </>
   ), [pontos])
+
+  const addLines = useMemo(() => (
+    <>
+      {linhas.map((linha, i) =>
+        <Polyline key={i} positions={linha} />,
+      )}
+    </>
+  ), [linhas])
+
+  const addPolygons = useMemo(() => (
+    <>
+      {poligonos.map((poligono, i) =>
+        <Polygon key={i} positions={poligono} />,
+      )}
+    </>
+  ), [poligonos])
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
@@ -179,19 +225,8 @@ function Map(props) {
         />
 
         {addPoints}
-
-        {/* {ds.getPoints().map(point =>
-          <Marker key={point.id} position={[point.lat, point.lon]} leafletId={point.id} />,
-        )} */}
-
-        {
-          // pontos.forEach((ponto, index) =>
-          //   // eslint-disable-next-line react/jsx-key
-          //   <Marker key={index} position={ponto} />,
-          // )
-        }
-
-        {console.log(ds)}
+        {addLines}
+        {addPolygons}
 
       </FeatureGroup>
 

@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import Map from './components/Map'
-import SearchBar from './components/SearchBar'
 
 function App() {
-  const [selectPosition, setSelectPosition] = useState(null)
+  const [selectPosition] = useState(null)
 
   return (
     <>
-      <SearchBar setSelectPosition={setSelectPosition} />
       <Map selectPosition={selectPosition} />
     </>
   )
