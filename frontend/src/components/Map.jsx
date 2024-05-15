@@ -5,6 +5,7 @@ import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import L from 'leaflet'
 import { Point, Line, Polygon } from '../classes.js'
+import '../style.css'
 
 function ResetCenterView(props) {
   const { selectPosition } = props
