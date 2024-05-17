@@ -31,33 +31,56 @@ function Map(props) {
   const [points, setPoints] = useState([]);
   const [lines, setLines] = useState([]);
   const [polygons, setPolygons] = useState([]);
-  const [currentDescription, setCurrentDescription] = useState('');
+  const [currentDescriptions, setCurrentDescriptions] = useState([]);
   // eslint-disable-next-line no-unused-vars
-  const [currentObject, setCurrentObject] = useState(null);
+  const [currentElement, setCurrentElement] = useState(null);
 
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
-  const handleDescriptionChange = (event) => {
-    setCurrentDescription(event.target.value);
+  const handleDescriptionChange = (index, event) => {
+    const newDescriptions = [...currentDescriptions];
+    newDescriptions[index] = event.target.value;
+    setCurrentDescriptions(newDescriptions);
+  };
+
+  const addNewDescription = () => {
+    setCurrentDescriptions([...currentDescriptions, '']);
   };
 
   const handleSaveDescription = () => {
-    if (currentObject) {
-      const updatedPoints = points.map((point) => {
-        if (point.id === currentObject.id) {
-          const newDescription = point.description
-            ? `${point.description}\n${currentDescription}`
-            : currentDescription;
-          point.setDescription(newDescription);
-        }
-        return point;
-      });
-      setPoints(updatedPoints);
-      setCurrentDescription('');
-      setCurrentObject(null);
+    if (currentElement) {
+      if (currentElement.type === 'point') {
+        const updatedPoints = points.map((point) => {
+          if (point.id === currentElement.id) {
+            point.setDescription(currentDescriptions.join('\n'));
+          }
+          return point;
+        });
+        setPoints(updatedPoints);
+      }
+      else if (currentElement.type === 'line') {
+        const updatedLines = lines.map((line) => {
+          if (line.id === currentElement.id) {
+            line.setDescription(currentDescriptions.join('\n'));
+          }
+          return line;
+        });
+        setLines(updatedLines);
+      }
+      else if (currentElement.type === 'polygon') {
+        const updatedPolygons = polygons.map((polygon) => {
+          if (polygon.id === currentElement.id) {
+            polygon.setDescription(currentDescriptions.join('\n'));
+          }
+          return polygon;
+        });
+        setPolygons(updatedPolygons);
+      }
+      setCurrentDescriptions([]);
+      setCurrentElement(null);
     }
   };
 
@@ -68,7 +91,7 @@ function Map(props) {
       // Extract coordinates of the created marker
       const latlng = layer.getLatLng()
       // let point = new classesJs.Point(latlng.lat, latlng.lng, layer._leaflet_id)
-      let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id)
+      let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id, 'new point')
       point.logCoordinates()
       setPoints([...points, point]);
       points.push(point)
@@ -184,6 +207,22 @@ function Map(props) {
       }
     })
   }
+  const renderPopupContent = (id, type, descriptions) => (
+    <div>
+      {descriptions.map((desc, index) => (
+        <div key={index}>
+          <input
+            type="text"
+            value={currentElement?.id === id ? currentDescriptions[index] : desc}
+            onChange={event => handleDescriptionChange(index, event)}
+          />
+        </div>
+      ))}
+      <button className="row" onClick={addNewDescription}>Add Row</button>
+
+      <button className="save" onClick={handleSaveDescription}>Save</button>
+    </div>
+  );
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
@@ -205,72 +244,44 @@ function Map(props) {
 
         {points.map(point => (
           <Marker
-            key={point.getId()}
-            position={[point.getLatitude(), point.getLongitude()]}
+            key={point.id}
+            position={[point.lat, point.lon]}
             eventHandlers={{
               click: () => {
-                setCurrentObject(point);
-                setCurrentDescription('');
+                setCurrentElement({ id: point.id, type: 'point' });
+                setCurrentDescriptions(point.description.split('\n'));
               },
             }}
           >
-            <Popup>
-              <div>
-                <label>
-                  Description:
-                  <input
-                    type="text"
-                    value={currentDescription}
-                    onChange={handleDescriptionChange}
-                  />
-                </label>
-                <br />
-                <button onClick={handleSaveDescription}>Save</button>
-                <br />
-                <div>{point.description}</div>
-              </div>
-            </Popup>
+            <Popup>{renderPopupContent(point.id, 'point', point.description.split('\n'))}</Popup>
           </Marker>
         ))}
         {lines.map(line => (
-          <Polyline key={line.getId()} positions={line.getPoints().map(p => [p.getLatitude(), p.getLongitude()])}>
-            <Popup>
-              <div>
-                <label>
-                  Description:
-                  <input
-                    type="text"
-                    value={currentDescription}
-                    onChange={handleDescriptionChange}
-                  />
-                </label>
-                <br />
-                <button onClick={handleSaveDescription}>Save</button>
-                <br />
-                <div>{line.description}</div>
-              </div>
-            </Popup>
+          <Polyline
+            key={line.id}
+            positions={line.points.map(p => [p.lat, p.lon])}
+            eventHandlers={{
+              click: () => {
+                setCurrentElement({ id: line.id, type: 'line' });
+                setCurrentDescriptions(line.description.split('\n'));
+              },
+            }}
+          >
+            <Popup>{renderPopupContent(line.id, 'line', line.description.split('\n'))}</Popup>
           </Polyline>
         ))}
-
         {polygons.map(polygon => (
-          <LeafletPolygon key={polygon.getId()} positions={polygon.getPoints().map(p => [p.getLatitude(), p.getLongitude()])}>
-            <Popup>
-              <div>
-                <label>
-                  Description:
-                  <input
-                    type="text"
-                    value={currentDescription}
-                    onChange={handleDescriptionChange}
-                  />
-                </label>
-                <br />
-                <button onClick={handleSaveDescription}>Save</button>
-                <br />
-                <div>{polygon.description}</div>
-              </div>
-            </Popup>
+          <LeafletPolygon
+            key={polygon.id}
+            positions={polygon.points.map(p => [p.lat, p.lon])}
+            eventHandlers={{
+              click: () => {
+                setCurrentElement({ id: polygon.id, type: 'polygon' });
+                setCurrentDescriptions(polygon.description.split('\n'));
+              },
+            }}
+          >
+            <Popup>{renderPopupContent(polygon.id, 'polygon', polygon.description.split('\n'))}</Popup>
           </LeafletPolygon>
         ))}
       </FeatureGroup>
