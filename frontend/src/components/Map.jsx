@@ -1,6 +1,6 @@
 /* eslint-disable @stylistic/semi */
 import { useEffect, useState } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polyline, Polygon as LeafletPolygon } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import L from 'leaflet'
@@ -29,46 +29,37 @@ function Map(props) {
   // List of points
 
   const [points, setPoints] = useState([]);
-  const [lines] = useState([]);
+  const [lines, setLines] = useState([]);
   const [polygons, setPolygons] = useState([]);
   const [currentDescription, setCurrentDescription] = useState('');
+  // eslint-disable-next-line no-unused-vars
+  const [currentObject, setCurrentObject] = useState(null);
 
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
-  /*
-  const handlePointChange = (index, attribute, value) => {
-    const updatedPoints = [...points];
-    if (attribute === 'lat') updatedPoints[index].updateCoordinates(parseFloat(value), updatedPoints[index].lon);
-    if (attribute === 'lon') updatedPoints[index].updateCoordinates(updatedPoints[index].lat, parseFloat(value));
-    if (attribute === 'id') updatedPoints[index].updateId(value);
-    points.push(updatedPoints);
+  const handleDescriptionChange = (event) => {
+    setCurrentDescription(event.target.value);
   };
 
-  const handleLineChange = (index, attribute, value) => {
-    const updatedLines = [...lines];
-    if (attribute === 'description') updatedLines[index].setDescription(value);
-    if (attribute === 'points') updatedLines[index].updatePoints(value.split('\n').map((p) => {
-      const [lat, lon] = p.split(', ');
-      return new Point(parseFloat(lat), parseFloat(lon));
-    }));
-    if (attribute === 'id') updatedLines[index].updateId(value);
-    lines.push(updatedLines);
+  const handleSaveDescription = () => {
+    if (currentObject) {
+      const updatedPoints = points.map((point) => {
+        if (point.id === currentObject.id) {
+          const newDescription = point.description
+            ? `${point.description}\n${currentDescription}`
+            : currentDescription;
+          point.setDescription(newDescription);
+        }
+        return point;
+      });
+      setPoints(updatedPoints);
+      setCurrentDescription('');
+      setCurrentObject(null);
+    }
   };
-
-  const handlePolygonChange = (index, attribute, value) => {
-    const updatedPolygons = [...polygons];
-    if (attribute === 'description') updatedPolygons[index].setDescription(value);
-    if (attribute === 'points') updatedPolygons[index].updatePoints(value.split('\n').map((p) => {
-      const [lat, lon] = p.split(', ');
-      return new Point(parseFloat(lat), parseFloat(lon));
-    }));
-    if (attribute === 'id') updatedPolygons[index].updateId(value);
-    polygons.push(updatedPolygons);
-  };
-  */
 
   const onCreated = (e) => {
     const { layerType, layer } = e
@@ -80,11 +71,13 @@ function Map(props) {
       let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id)
       point.logCoordinates()
       setPoints([...points, point]);
+      points.push(point)
     }
 
     if (layerType === 'polyline') {
       const pointObjects = layer.getLatLngs().map(latlng => new Point(latlng.lat, latlng.lng))
       let line = new Line(pointObjects, 'new line', layer._leaflet_id)
+      setLines([...lines, line]);
       lines.push(line)
       console.log('All lines stored:', lines)
     }
@@ -93,22 +86,11 @@ function Map(props) {
       const pointObjects = layer.getLatLngs()[0].map(latlng => new Point(latlng.lat, latlng.lng))
       let polygon = new Polygon(pointObjects, 'new Polygon', layer._leaflet_id)
       setPolygons([...polygons, polygon])
+      polygons.push(polygon)
       console.log('All polygons stored:', polygons)
     }
   }
-  const handleDescriptionChange = (event) => {
-    setCurrentDescription(event.target.value);
-  };
 
-  const handleSaveDescription = (index) => {
-    const updatedPoints = [...points];
-    const newDescription = updatedPoints[index].description
-      ? `${updatedPoints[index].description}\n${currentDescription}`
-      : currentDescription;
-    updatedPoints[index].setDescription(newDescription);
-    setPoints(updatedPoints);
-    setCurrentDescription('');
-  };
   const onEdited = (e) => {
     console.log('onEdited event triggered')
     const editedLayers = e.layers.getLayers()
@@ -123,6 +105,7 @@ function Map(props) {
           points[editedPointIndex].setLatitude(editedLatLng.lat)
           points[editedPointIndex].setLongitude(editedLatLng.lng)
           points[editedPointIndex].logCoordinates()
+          setPoints([...points]);
         }
       }
 
@@ -134,6 +117,7 @@ function Map(props) {
         if (lineToEdit) {
           lineToEdit.updatePoints(newPoints)
           console.log('Updated line:', lineToEdit)
+          setLines([...lines]);
         }
         else {
           console.log('No line found with the ID:', editedLayer._leaflet_id)
@@ -149,6 +133,7 @@ function Map(props) {
         if (polygonToEdit) {
           polygonToEdit.updatePoints(newPoints)
           console.log('Updated polygon:', polygonToEdit)
+          setPolygons([...polygons]);
         }
         else {
           console.log('No polygon found with the ID:', editedLayer._leaflet_id)
@@ -170,6 +155,7 @@ function Map(props) {
         if (removedPointIndex !== -1) {
           points.splice(removedPointIndex, 1)
           console.log(`Point ${removedPointIndex} removed.`)
+          setPoints([...points]);
         }
       }
 
@@ -180,6 +166,7 @@ function Map(props) {
         if (lineToRemoveIndex !== -1) {
           lines.splice(lineToRemoveIndex, 1)
           console.log(`Removed polygon: ${lineToRemoveIndex}`)
+          setLines([...lines]);
         }
         console.log('All lines stored:', lines)
       }
@@ -191,6 +178,7 @@ function Map(props) {
         if (polygonToRemoveIndex !== -1) {
           polygons.splice(polygonToRemoveIndex, 1)
           console.log(`Removed polygon: ${polygonToRemoveIndex}`)
+          setPolygons([...polygons]);
         }
         console.log('All polygons stored:', polygons)
       }
@@ -215,8 +203,17 @@ function Map(props) {
           </Popup>
         </Marker>
 
-        {points.map((point, index) => (
-          <Marker key={point.id} position={[point.lat, point.lon]}>
+        {points.map(point => (
+          <Marker
+            key={point.getId()}
+            position={[point.getLatitude(), point.getLongitude()]}
+            eventHandlers={{
+              click: () => {
+                setCurrentObject(point);
+                setCurrentDescription('');
+              },
+            }}
+          >
             <Popup>
               <div>
                 <label>
@@ -228,7 +225,7 @@ function Map(props) {
                   />
                 </label>
                 <br />
-                <button onClick={() => handleSaveDescription(index)}>Save</button>
+                <button onClick={handleSaveDescription}>Save</button>
                 <br />
                 <div>{point.description}</div>
               </div>
@@ -236,14 +233,45 @@ function Map(props) {
           </Marker>
         ))}
         {lines.map(line => (
-          <Line key={line.id} positions={line.points.map(p => [p.lat, p.lon])}>
-            <Popup>Hello</Popup>
-          </Line>
+          <Polyline key={line.getId()} positions={line.getPoints().map(p => [p.getLatitude(), p.getLongitude()])}>
+            <Popup>
+              <div>
+                <label>
+                  Description:
+                  <input
+                    type="text"
+                    value={currentDescription}
+                    onChange={handleDescriptionChange}
+                  />
+                </label>
+                <br />
+                <button onClick={handleSaveDescription}>Save</button>
+                <br />
+                <div>{line.description}</div>
+              </div>
+            </Popup>
+          </Polyline>
         ))}
+
         {polygons.map(polygon => (
-          <Polygon key={polygon.id} positions={polygon.points.map(p => [p.lat, p.lon])}>
-            <Popup>Hello</Popup>
-          </Polygon>
+          <LeafletPolygon key={polygon.getId()} positions={polygon.getPoints().map(p => [p.getLatitude(), p.getLongitude()])}>
+            <Popup>
+              <div>
+                <label>
+                  Description:
+                  <input
+                    type="text"
+                    value={currentDescription}
+                    onChange={handleDescriptionChange}
+                  />
+                </label>
+                <br />
+                <button onClick={handleSaveDescription}>Save</button>
+                <br />
+                <div>{polygon.description}</div>
+              </div>
+            </Popup>
+          </LeafletPolygon>
         ))}
       </FeatureGroup>
 
