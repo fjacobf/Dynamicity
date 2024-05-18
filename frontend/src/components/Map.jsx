@@ -130,7 +130,7 @@ function Map(props) {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      ds.addPoint(layer._leaflet_id, layer.getLatLng())
+      ds.addPoint(layer._leaflet_id, layer.getLatLng(), { description: 'novo ponto' })
     }
 
     if (layerType === 'polyline') {
@@ -163,7 +163,7 @@ function Map(props) {
     console.log(ds)
   }
 
-  const handleDelete = (e) => {
+  const onDelete = (e) => {
     const removedLayers = e.layers.getLayers()
 
     removedLayers.forEach((removedLayer) => {
@@ -218,7 +218,7 @@ function Map(props) {
           position="topleft"
           onCreated={onCreated}
           onEdited={onEdited}
-          onDeleted={handleDelete}
+          onDeleted={onDelete}
           draw={{
             rectangle: false,
           }}

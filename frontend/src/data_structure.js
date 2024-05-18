@@ -6,22 +6,13 @@ export class DSManager {
     this.polygons = []
   }
 
-  addPoint(id, coordinates) {
+  addPoint(id, coordinates, properties) {
     if (this.points.some(point => point.getId() === id)) {
       console.log(`Point with ID ${id} already exists. Skipping add.`);
       return; // Early return to prevent addition
     }
-    let point = new Point(coordinates.lat, coordinates.lng, id);
+    let point = new Point(coordinates.lat, coordinates.lng, id, properties);
     this.points.push(point);
-  }
-
-  findPoint(id) {
-    const point = this.points.find(point => point.getId() === id)
-    return point
-  }
-
-  getPoints() {
-    return this.points
   }
 
   editPoint(id, new_lat_lng) {
@@ -35,17 +26,7 @@ export class DSManager {
     return this.points[editedPointIndex]
   }
 
-  editPointID(new_id, lat_lng) {
-    const editedPointIndex = this.points.findIndex(point => point.getLatitude() === lat_lng.lat && point.getLongitude() === lat_lng.lon)
-
-    if (editedPointIndex !== -1) {
-      this.points[editedPointIndex].setId(new_id)
-    }
-
-    return this.points[editedPointIndex]
-  }
-
-  removePoint(id) { // Faz sentido retornar o id do ponto removido?
+  removePoint(id) {
     const removedPointIndex = this.points.findIndex(point => point.getId() === id)
 
     if (removedPointIndex !== -1) {
@@ -56,12 +37,45 @@ export class DSManager {
     return false
   }
 
+  findPoint(id) {
+    const point = this.points.find(point => point.getId() === id)
+    return point
+  }
+
+  getPoints() {
+    return this.points
+  }
+
   // Method to add a new line
-  addLine(id, points) {
+  addLine(id, points, properties) {
     const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
-    const line = new Line(pointObjects, 'New line', id)
+    const line = new Line(pointObjects, id, properties)
     this.lines.push(line)
     return line
+  }
+
+  editLine(id, LatLngs) {
+    const newPoints = LatLngs.map(latlng => new Point(latlng.lat, latlng.lng))
+    const lineToEdit = this.lines.find(line => line.getId() === id)
+
+    if (lineToEdit) {
+      lineToEdit.setPoints(newPoints)
+      return lineToEdit
+    }
+    else {
+      console.log('No line found with the ID:', id)
+      return null
+    }
+  }
+
+  removeLine(id) {
+    const lineToRemoveIndex = this.lines.findIndex(line => line.getId() === id)
+
+    if (lineToRemoveIndex !== -1) {
+      this.lines.splice(lineToRemoveIndex, 1)
+      return true
+    }
+    return false
   }
 
   findLine(id) {
@@ -74,44 +88,10 @@ export class DSManager {
     return this.lines
   }
 
-  editLine(id, LatLngs) {
-    const newPoints = LatLngs.map(latlng => new Point(latlng.lat, latlng.lng))
-    const lineToEdit = this.lines.find(line => line.getId() === id)
-
-    if (lineToEdit) {
-      lineToEdit.updatePoints(newPoints)
-      return lineToEdit
-    }
-    else {
-      console.log('No line found with the ID:', id)
-      return null
-    }
-  }
-
-  // Method to remove a line
-  removeLine(id) {
-    const lineToRemoveIndex = this.lines.findIndex(line => line.getId() === id)
-
-    if (lineToRemoveIndex !== -1) {
-      this.lines.splice(lineToRemoveIndex, 1)
-      return true
-    }
-    return false
-  }
-
-  addPolygon(id, points) {
+  addPolygon(id, points, properties) {
     const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
-    let polygon = new Polygon(pointObjects, 'new Polygon', id)
+    let polygon = new Polygon(pointObjects, id, properties)
     this.polygons.push(polygon)
-  }
-
-  findPolygon(id) {
-    const polygon = this.polygon.find(polygon => polygon.getId() === id)
-    return polygon
-  }
-
-  getPolygons() {
-    return this.polygons
   }
 
   editPolygon(id, points) {
@@ -119,7 +99,7 @@ export class DSManager {
     const polygonToEdit = this.polygons.find(polygon => polygon.getId() === id)
 
     if (polygonToEdit) {
-      polygonToEdit.updatePoints(newPoints)
+      polygonToEdit.setPoints(newPoints)
       return polygonToEdit
     }
     else {
@@ -137,24 +117,22 @@ export class DSManager {
     }
   }
 
-  populateGeoJson(geoJson) {
-    geoJson.features.forEach((feature, x = 0) => {
-      if (feature.geometry.type == 'Point') {
-        this.addPoint(x, { lat: feature.geometry.coordinates[0], lng: feature.geometry.coordinates[1] })
-      }
-    });
+  findPolygon(id) {
+    const polygon = this.polygon.find(polygon => polygon.getId() === id)
+    return polygon
+  }
+
+  getPolygons() {
+    return this.polygons
   }
 }
 
 export class Point {
-  constructor(lat, lon, id) {
+  constructor(lat, lon, id, properties) {
     this.lat = lat
     this.lon = lon
     this.id = id
-  }
-
-  logCoordinates() {
-    console.log(`Latitude: ${this.lat}, Longitude: ${this.lon}`)
+    this.properties = properties
   }
 
   setLatitude(lat) {
@@ -165,8 +143,8 @@ export class Point {
     this.lon = lon
   }
 
-  setId(id) {
-    this.id = id
+  setProperties(properties) {
+    this.properties = properties
   }
 
   getLatitude() {
@@ -175,6 +153,10 @@ export class Point {
 
   getLongitude() {
     return this.lon
+  }
+
+  getProperties() {
+    return this.properties
   }
 
   getId() {
@@ -199,31 +181,29 @@ export class Point {
   toRadians(degrees) {
     return degrees * (Math.PI / 180)
   }
-
-  toString() {
-    return `Latitude: ${this.lat}, Longitude: ${this.lon}`
-  }
 }
 
 export class Line {
-  constructor(points, description, id) {
-    this.points = points// Array of coordinate pairs {lat, lng}
-    this.description = description // starts as null and we will be able to edit it
+  constructor(points, id, properties) {
+    this.points = points
     this.id = id
+    this.properties = properties
   }
 
-  // Method to set or update the description of the line
-  setDescription(description) {
-    this.description = description
-  }
-
-  // Method to update the coordinates of the line
-  updatePoints(newPoints) {
+  setPoints(newPoints) {
     this.points = newPoints
+  }
+
+  setProperties(properties) {
+    this.properties = properties
   }
 
   getPoints() {
     return this.points
+  }
+
+  getProperties() {
+    return this.properties
   }
 
   getId() {
@@ -232,24 +212,27 @@ export class Line {
 }
 
 export class Polygon {
-  constructor(points, description, id) {
-    this.points = points// Array of coordinate pairs {lat, lng}
-    this.description = description // starts as null and we will be able to edit it
+  constructor(points, id, properties) {
+    this.points = points
     this.id = id
-  }
-
-  // Method to set or update the description of the line
-  setDescription(description) {
-    this.description = description
+    this.properties = properties
   }
 
   // Method to update the coordinates of the line
-  updatePoints(newPoints) {
+  setPoints(newPoints) {
     this.points = newPoints
+  }
+
+  setProperties(properties) {
+    this.properties = properties
   }
 
   getPoints() {
     return this.points
+  }
+
+  getProperties() {
+    return this.properties
   }
 
   getId() {
