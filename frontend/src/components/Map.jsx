@@ -1,15 +1,55 @@
 /* eslint-disable @stylistic/semi */
-import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup } from 'react-leaflet'
-import { EditControl } from 'react-leaflet-draw'
-import 'leaflet-draw/dist/leaflet.draw.css'
 import L from 'leaflet'
-import { Point, Line, Polygon } from '../classes.js'
+import 'leaflet-draw/dist/leaflet.draw.css'
+import { useEffect, useMemo } from 'react'
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet'
+import { EditControl } from 'react-leaflet-draw'
+import { DSManager } from '../data_structure.js'
+import geoJson from '../data/map.json'
+
+var ds = new DSManager();
+var pontos = []
+var linhas = []
+var poligonos = []
+var fimpoints = false
+var fimpolygons = false
+var fimlines = false
+
+const areCoordinatesEqual = (coords1, coords2) => {
+  if (coords1.length !== coords2.length) return false;
+  for (let i = 0; i < coords1.length; i++) {
+    if (coords1[i][0] !== coords2[i][0] || coords1[i][1] !== coords2[i][1]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+geoJson.features.forEach((feature) => {
+  if (feature.geometry.type == 'Point') {
+    const [lat, lng] = feature.geometry.coordinates;
+    pontos.push([lat, lng]);
+  }
+  else if (feature.geometry.type == 'LineString') {
+    const lineCoords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+    if (lineCoords.length > 0) {
+      linhas.push(lineCoords);
+    }
+  }
+  else if (feature.geometry.type == 'Polygon') {
+    var polyCoords = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+    if (polyCoords.length > 1) {
+      if (areCoordinatesEqual([polyCoords[0]], [polyCoords[polyCoords.length - 1]])) {
+        polyCoords.pop();
+      }
+      poligonos.push(polyCoords);
+    }
+  }
+})
 
 function ResetCenterView(props) {
   const { selectPosition } = props
   const map = useMap()
-
   useEffect(() => {
     if (selectPosition) {
       map.flyTo(
@@ -24,135 +64,156 @@ function ResetCenterView(props) {
   }, [map, selectPosition])
 }
 
-function Map(props) {
-  // List of points
+function Events() {
+  const map = useMap();
 
-  var points = []
-  var polygons = []
+  useEffect(() => {
+    const handleLayerAdd = (event) => {
+      const { layer } = event;
+      if (layer instanceof L.Marker) {
+        let isPointExisting = false
+        const markerLat = layer.getLatLng().lat
+        const markerLng = layer.getLatLng().lng
+        isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
+        if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
+          ds.addPoint(layer._leaflet_id, layer.getLatLng())
+        }
+      }
+
+      if (layer instanceof L.Polyline) {
+        const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
+        const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
+        if (isLineExisting && !fimlines) {
+          ds.addLine(layer._leaflet_id, layer.getLatLngs())
+        }
+      }
+
+      if (layer instanceof L.Polygon) {
+        const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
+        const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
+        if (isPolygonExisting && !fimpolygons) {
+          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+        }
+      }
+
+      if (pontos.length == ds.points.length && !fimpoints) {
+        fimpoints = true
+      }
+
+      if (linhas.length == ds.lines.length && !fimlines) {
+        fimlines = true
+      }
+
+      if (poligonos.length == ds.polygons.length && !fimpolygons) {
+        fimpolygons = true
+      }
+    };
+
+    map.on('layeradd', handleLayerAdd)
+    return () => {
+      map.off('layeradd', handleLayerAdd)
+    };
+  }, [map]);
+
+  return null;
+}
+
+function Map(props) {
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
-  var lines = []
+
+  // Access the Leaflet element ID after the component is mounted
 
   const onCreated = (e) => {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      // Extract coordinates of the created marker
-      const latlng = layer.getLatLng()
-      // let point = new classesJs.Point(latlng.lat, latlng.lng, layer._leaflet_id)
-      let point = new Point(latlng.lat, latlng.lng, layer._leaflet_id)
-      point.logCoordinates()
-      points.push(point)
+      ds.addPoint(layer._leaflet_id, layer.getLatLng())
     }
 
     if (layerType === 'polyline') {
-      const pointObjects = layer.getLatLngs().map(latlng => new Point(latlng.lat, latlng.lng))
-      let line = new Line(pointObjects, 'new line', layer._leaflet_id)
-      lines.push(line)
-      console.log('All lines stored:', lines)
+      ds.addLine(layer._leaflet_id, layer.getLatLngs())
     }
 
     if (layerType === 'polygon') {
-      const pointObjects = layer.getLatLngs()[0].map(latlng => new Point(latlng.lat, latlng.lng))
-      let polygon = new Polygon(pointObjects, 'new Polygon', layer._leaflet_id)
-      polygons.push(polygon)
-      console.log('All polygons stored:', polygons)
+      ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
     }
+    console.log('create: ')
+    console.log(ds)
   }
 
   const onEdited = (e) => {
-    console.log('onEdited event triggered')
     const editedLayers = e.layers.getLayers()
 
     editedLayers.forEach((editedLayer) => {
-      // Check if the edited layer is a marker
-      if (editedLayer instanceof L.Marker) {
-        const editedLatLng = editedLayer.getLatLng()
-        const editedPointIndex = points.findIndex(point => point.getId() === editedLayer._leaflet_id)
-
-        if (editedPointIndex !== -1) {
-          points[editedPointIndex].setLatitude(editedLatLng.lat)
-          points[editedPointIndex].setLongitude(editedLatLng.lng)
-          points[editedPointIndex].logCoordinates()
-        }
-      }
-
-      // Check if the edited layer is a polyline
-      if (editedLayer instanceof L.Polyline) {
-        const newPoints = editedLayer.getLatLngs().map(latlng => new Point(latlng.lat, latlng.lng))
-        const lineToEdit = lines.find(line => line.getId() === editedLayer._leaflet_id)
-
-        if (lineToEdit) {
-          lineToEdit.updatePoints(newPoints)
-          console.log('Updated line:', lineToEdit)
-        }
-        else {
-          console.log('No line found with the ID:', editedLayer._leaflet_id)
-        }
-        console.log('All lines stored:', lines)
-        // lines.getAllLines() // Log all lines to console after editing
-      }
-
       if (editedLayer instanceof L.Polygon) {
-        const newPoints = editedLayer.getLatLngs()[0].map(latlng => new Point(latlng.lat, latlng.lng))
-        const polygonToEdit = polygons.find(polygon => polygon.getId() === editedLayer._leaflet_id)
-
-        if (polygonToEdit) {
-          polygonToEdit.updatePoints(newPoints)
-          console.log('Updated polygon:', polygonToEdit)
-        }
-        else {
-          console.log('No polygon found with the ID:', editedLayer._leaflet_id)
-        }
-        console.log('All polygons stored:', polygons)
+        ds.editPolygon(editedLayer._leaflet_id, editedLayer.getLatLngs()[0])
+      }
+      else if (editedLayer instanceof L.Polyline) {
+        ds.editLine(editedLayer._leaflet_id, editedLayer.getLatLngs())
+      }
+      else if (editedLayer instanceof L.Marker) {
+        ds.editPoint(editedLayer._leaflet_id, editedLayer.getLatLng())
       }
     })
+
+    console.log('edit: ')
+    console.log(ds)
   }
 
   const handleDelete = (e) => {
-    console.log('handleDelete event triggered')
     const removedLayers = e.layers.getLayers()
 
     removedLayers.forEach((removedLayer) => {
-      // Check if the removed layer is a marker
       if (removedLayer instanceof L.Marker) {
-        const removedPointIndex = points.findIndex(point => point.getId() === removedLayer._leaflet_id)
-
-        if (removedPointIndex !== -1) {
-          points.splice(removedPointIndex, 1)
-          console.log(`Point ${removedPointIndex} removed.`)
-        }
+        ds.removePoint(removedLayer._leaflet_id)
       }
 
-      // Check if the removed layer is a polyline
       if (removedLayer instanceof L.Polyline) {
-        const lineToRemoveIndex = lines.findIndex(line => line.getId() === removedLayer._leaflet_id)
-
-        if (lineToRemoveIndex !== -1) {
-          lines.splice(lineToRemoveIndex, 1)
-          console.log(`Removed polygon: ${lineToRemoveIndex}`)
-        }
-        console.log('All lines stored:', lines)
+        ds.removeLine(removedLayer._leaflet_id)
       }
 
-      // Check if the removed layer is a polygon
       if (removedLayer instanceof L.Polygon) {
-        const polygonToRemoveIndex = polygons.findIndex(polygon => polygon.getId() === removedLayer._leaflet_id)
-
-        if (polygonToRemoveIndex !== -1) {
-          polygons.splice(polygonToRemoveIndex, 1)
-          console.log(`Removed polygon: ${polygonToRemoveIndex}`)
-        }
-        console.log('All polygons stored:', polygons)
+        ds.removePolygon(removedLayer._leaflet_id)
       }
     })
+    console.log('delete: ')
+    console.log(ds)
   }
 
+  const addPoints = useMemo(() => (
+    <>
+      {pontos.map((ponto, i) =>
+        <Marker key={i} position={ponto} />,
+      )}
+    </>
+  ), [pontos])
+
+  const addLines = useMemo(() => (
+    <>
+      {linhas.map((linha, i) =>
+        <Polyline key={i} positions={linha} />,
+      )}
+    </>
+  ), [linhas])
+
+  const addPolygons = useMemo(() => (
+    <>
+      {poligonos.map((poligono, i) =>
+        <Polygon key={i} positions={poligono} />,
+      )}
+    </>
+  ), [poligonos])
+
   return (
-    <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
+    <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
+
+      <Events />
+
       <FeatureGroup>
+
         <EditControl
           position="topleft"
           onCreated={onCreated}
@@ -162,13 +223,18 @@ function Map(props) {
             rectangle: false,
           }}
         />
-        <Marker position={[51.505, -0.09]}></Marker>
+
+        {addPoints}
+        {addLines}
+        {addPolygons}
+
       </FeatureGroup>
 
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+
       {selectPosition && (
         <Marker position={locationSelection}>
           <Popup>
@@ -177,6 +243,7 @@ function Map(props) {
         </Marker>
       )}
       <ResetCenterView selectPosition={selectPosition} />
+
     </MapContainer>
   )
 }
