@@ -1,11 +1,12 @@
 /* eslint-disable @stylistic/semi */
 import L from 'leaflet'
 import 'leaflet-draw/dist/leaflet.draw.css'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet'
 import { EditControl } from 'react-leaflet-draw'
 import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
+import ReactDOMServer from 'react-dom/server';
 
 var ds = new DSManager();
 var pontos = []
@@ -124,13 +125,31 @@ function Map(props) {
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
-  // Access the Leaflet element ID after the component is mounted
+  const [currentElement, setCurrentElement] = useState(null);
+  const [currentDescriptions, setCurrentDescriptions] = useState([]);
+
+  // eslint-disable-next-line no-unused-vars
+  const handleDescriptionChange = (index, event) => {
+    const newDescriptions = [...currentDescriptions];
+    newDescriptions[index] = event.target.value;
+    setCurrentDescriptions(newDescriptions);
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const handleSaveDescription = () => {
+    console.log(currentElement)
+  };
 
   const onCreated = (e) => {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      ds.addPoint(layer._leaflet_id, layer.getLatLng(), { description: 'novo ponto' })
+      let point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), 'testes e mais testes')
+      layer.on('click', () => {
+        setCurrentElement({ id: layer._leaflet_id, type: 'point' });
+        setCurrentDescriptions(point.getProperties());
+      })
+      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, point.getProperties())))
     }
 
     if (layerType === 'polyline') {
@@ -140,6 +159,7 @@ function Map(props) {
     if (layerType === 'polygon') {
       ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
     }
+
     console.log('create: ')
     console.log(ds)
   }
@@ -183,10 +203,51 @@ function Map(props) {
     console.log(ds)
   }
 
+  const renderPopupContent = (id, properties) => (
+    <div className=" w-full">
+      {
+        Object.keys(properties).map(key => (
+          <div key={key} className="flex p-1">
+            <input
+              type="text"
+              value={key}
+              onChange={event => handleDescriptionChange(id, event)}
+              className="text-center w-36"
+            />
+            <input
+              type="text"
+              value={properties[key]}
+              onChange={event => handleDescriptionChange(id, event)}
+              className="text-center w-36"
+            />
+          </div>
+        ))
+      }
+
+      <div className="buttons flex justify-around p-1">
+        <button className="row border-2 rounded-md p-1" onClick={console.log('comassim')}>Add Row</button>
+        <button className="save border-2 rounded-md p-1">Save</button>
+      </div>
+
+    </div>
+  );
+
   const addPoints = useMemo(() => (
     <>
       {pontos.map((ponto, i) =>
-        <Marker key={i} position={ponto} />,
+        (
+          <Marker
+            key={i}
+            position={ponto}
+            eventHandlers={{
+              click: () => {
+                console.log('point clicked')
+              },
+            }}
+          >
+            <Popup>que</Popup>
+          </Marker>
+        ),
       )}
     </>
   ), [pontos])
@@ -194,7 +255,19 @@ function Map(props) {
   const addLines = useMemo(() => (
     <>
       {linhas.map((linha, i) =>
-        <Polyline key={i} positions={linha} />,
+        (
+          <Polyline
+            key={i}
+            positions={linha}
+            eventHandlers={{
+              click: () => {
+                console.log('line event handler')
+              },
+            }}
+          >
+            <Popup>Linha do GeoJson</Popup>
+          </Polyline>
+        ),
       )}
     </>
   ), [linhas])
@@ -202,7 +275,19 @@ function Map(props) {
   const addPolygons = useMemo(() => (
     <>
       {poligonos.map((poligono, i) =>
-        <Polygon key={i} positions={poligono} />,
+        (
+          <Polygon
+            key={i}
+            positions={poligono}
+            eventHandlers={{
+              click: () => {
+                console.log('polygon event handler')
+              },
+            }}
+          >
+            <Popup>Polygon do GeoJson</Popup>
+          </Polygon>
+        ),
       )}
     </>
   ), [poligonos])

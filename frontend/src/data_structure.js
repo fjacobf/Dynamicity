@@ -13,6 +13,7 @@ export class DSManager {
     }
     let point = new Point(coordinates.lat, coordinates.lng, id, properties);
     this.points.push(point);
+    return point
   }
 
   editPoint(id, new_lat_lng) {
@@ -92,6 +93,7 @@ export class DSManager {
     const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
     let polygon = new Polygon(pointObjects, id, properties)
     this.polygons.push(polygon)
+    return polygon
   }
 
   editPolygon(id, points) {
