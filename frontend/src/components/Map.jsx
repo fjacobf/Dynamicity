@@ -1,13 +1,13 @@
 /* eslint-disable @stylistic/semi */
-import L from 'leaflet'
-import 'leaflet-draw/dist/leaflet.draw.css'
-import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet'
-import { EditControl } from 'react-leaflet-draw'
-import { DSManager } from '../data_structure.js'
-import geoJson from '../data/map.json'
-import ReactDOMServer from 'react-dom/server';
-import '../style.css'
+import L from 'leaflet';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import { useEffect, useMemo, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet';
+import { EditControl } from 'react-leaflet-draw';
+import { DSManager } from '../data_structure.js';
+import geoJson from '../data/map.json';
+import ReactDOM from 'react-dom';
+import '../style.css';
 
 var ds = new DSManager();
 var pontos = []
@@ -120,35 +120,61 @@ function Events() {
   return null;
 }
 
+// eslint-disable-next-line no-unused-vars, react/prop-types
+function PopupContent({ id, type, properties, onSave }) {
+  const [localProperties, setLocalProperties] = useState(properties);
+
+  const handlePropertiesChange = (key, event) => {
+    const newProperties = { ...localProperties };
+    newProperties[key] = event.target.value;
+    setLocalProperties(newProperties);
+  };
+
+  const addNewProperty = () => {
+    setLocalProperties({
+      ...localProperties,
+      ['new_property_' + Object.keys(localProperties).length]: '',
+    });
+  };
+
+  const handleSave = () => {
+    onSave(id, type, localProperties);
+  };
+
+  return (
+    <div className="w-full">
+      {
+        Object.entries(localProperties).map(([key, value], index) => (
+          <div key={index} className="flex p-1">
+            <input
+              type="text"
+              value={value}
+              onChange={event => handlePropertiesChange(key, event)}
+              className="text-center w-36"
+            />
+          </div>
+        ))
+      }
+      <div className="buttons flex justify-around p-1">
+        <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
+        <button className="save border-2 rounded-md p-1" onClick={handleSave}>Save</button>
+      </div>
+    </div>
+  );
+}
+
 function Map(props) {
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
+  // eslint-disable-next-line no-unused-vars
   const [currentElement, setCurrentElement] = useState(null);
-  const [currentProperties, setCurrentProperties] = useState([]);
 
-  const handlePropertiesChange = (key, event) => {
-    setCurrentProperties({
-      ...currentProperties,
-      [key]: event.target.value,
-    });
-  };
-
-  const handleSaveProperties = () => {
-    if (currentElement) {
-      updateProperties(currentElement.id, currentElement.type, currentProperties);
-      setCurrentElement(null);
-      setCurrentProperties({});
-    }
-  };
-
-  const addNewProperty = () => {
-    setCurrentProperties({
-      ...currentProperties,
-      ['new_property_' + Object.keys(currentProperties).length]: '',
-    });
+  const handleSaveProperties = (id, type, properties) => {
+    updateProperties(id, type, properties);
+    setCurrentElement(null);
   };
 
   const updateProperties = (id, type, properties) => {
@@ -166,57 +192,38 @@ function Map(props) {
     }
   };
 
-  const renderPopupContent = (id, type, properties) => (
-    <div className="w-full">
-      {
-        Object.entries(properties).map(([key, value], index) => (
-          <div key={index} className="flex p-1">
-            <input
-              type="text"
-              value={currentElement?.id === id ? currentProperties[key] : value}
-              onChange={event => handlePropertiesChange(key, event)}
-              className="text-center w-36"
-            />
-          </div>
-        ))
-      }
-      <div className="buttons flex justify-around p-1">
-        <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
-        <button className="save border-2 rounded-md p-1" onClick={handleSaveProperties}>Save</button>
-      </div>
-    </div>
-  );
-
   const onCreated = (e) => {
     const { layerType, layer } = e
 
+    const createPopup = (layer, type, properties) => {
+      const container = document.createElement('div');
+      // eslint-disable-next-line react/no-deprecated, no-undef
+      ReactDOM.render(
+        <PopupContent
+          id={layer._leaflet_id}
+          type={type}
+          properties={properties}
+          onSave={handleSaveProperties}
+        />,
+        container,
+      );
+      layer.bindPopup(container);
+    };
+
     if (layerType === 'marker') {
       const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
-      layer.on('click', () => {
-        setCurrentElement({ id: layer._leaflet_id, type: 'point' });
-        setCurrentProperties(point.getProperties());
-      });
-      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'point', { properties: point.getProperties() })));
+      createPopup(layer, 'point', { properties: point.getProperties() });
     }
 
-    if (layerType === 'polyline') {
-      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New line' });
-      layer.on('click', () => {
-        setCurrentElement({ id: layer._leaflet_id, type: 'line' });
-        setCurrentProperties(line.getProperties());
-      });
-      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'line', { properties: line.getProperties() })));
+    if (layerType === 'line') {
+      const line = ds.addLine(layer._leaflet_id, layer.getLatLng(), { properties: 'New Line' });
+      createPopup(layer, 'line', { properties: line.getProperties() });
     }
 
     if (layerType === 'polygon') {
-      let polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'new polygon' })
-      layer.on('click', () => {
-        setCurrentElement({ id: layer._leaflet_id, type: 'polygon' });
-        setCurrentProperties(polygon.getProperties());
-      })
-      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'polygon', { properties: polygon.getProperties() })));
+      const polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'New polygon' });
+      createPopup(layer, 'polygon', { properties: polygon.getProperties() });
     }
-
     console.log('create: ')
     console.log(ds)
   }
@@ -265,7 +272,12 @@ function Map(props) {
       {pontos.map((ponto, i) => (
         <Marker key={i} position={ponto}>
           <Popup>
-            {renderPopupContent(ponto, 'point', { properties: 'Geojson point' })}
+            <PopupContent
+              id={i}
+              type="point"
+              properties={{ description: 'Geojson point' }}
+              onSave={handleSaveProperties}
+            />
           </Popup>
         </Marker>
       ))}
@@ -277,7 +289,12 @@ function Map(props) {
       {linhas.map((linha, i) => (
         <Polyline key={i} positions={linha}>
           <Popup>
-            {renderPopupContent(i, 'line', { properties: 'Geojson line' })}
+            <PopupContent
+              id={i}
+              type="line"
+              properties={{ description: 'Geojson line' }}
+              onSave={handleSaveProperties}
+            />
           </Popup>
         </Polyline>
       ))}
@@ -289,7 +306,12 @@ function Map(props) {
       {poligonos.map((poligono, i) => (
         <Polygon key={i} positions={poligono}>
           <Popup>
-            {renderPopupContent(i, 'polygon', { properties: 'Geojson polygon' })}
+            <PopupContent
+              id={i}
+              type="polygon"
+              properties={{ description: 'Geojson polygon' }}
+              onSave={handleSaveProperties}
+            />
           </Popup>
         </Polygon>
       ))}
