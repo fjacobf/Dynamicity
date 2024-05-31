@@ -78,7 +78,7 @@ function Events() {
         const markerLng = layer.getLatLng().lng
         isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
         if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
-          ds.addPoint(layer._leaflet_id, layer.getLatLng())
+          ds.addPoint(layer._leaflet_id, layer.getLatLng(), '')
         }
       }
 
@@ -86,7 +86,7 @@ function Events() {
         const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
         const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
         if (isLineExisting && !fimlines) {
-          ds.addLine(layer._leaflet_id, layer.getLatLngs())
+          ds.addLine(layer._leaflet_id, layer.getLatLngs(), '')
         }
       }
 
@@ -94,7 +94,7 @@ function Events() {
         const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
         const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
         if (isPolygonExisting && !fimpolygons) {
-          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], '')
         }
       }
 
@@ -215,8 +215,8 @@ function Map(props) {
       createPopup(layer, 'point', { properties: point.getProperties() });
     }
 
-    if (layerType === 'line') {
-      const line = ds.addLine(layer._leaflet_id, layer.getLatLng(), { properties: 'New Line' });
+    if (layerType === 'polyline') {
+      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New Line' });
       createPopup(layer, 'line', { properties: line.getProperties() });
     }
 
