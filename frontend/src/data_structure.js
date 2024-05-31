@@ -134,7 +134,7 @@ export class DSManager {
   }
 
   findPolygon(id) {
-    const polygon = this.polygon.find(polygon => polygon.getId() === id)
+    const polygon = this.polygons.find(polygon => polygon.getId() === id)
     return polygon
   }
 

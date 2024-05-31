@@ -120,7 +120,7 @@ function Events() {
   return null;
 }
 
-// eslint-disable-next-line no-unused-vars, react/prop-types
+// eslint-disable-next-line react/prop-types
 function PopupContent({ id, type, properties, onSave }) {
   const [localProperties, setLocalProperties] = useState(properties);
 
@@ -197,7 +197,7 @@ function Map(props) {
 
     const createPopup = (layer, type, properties) => {
       const container = document.createElement('div');
-      // eslint-disable-next-line react/no-deprecated, no-undef
+      // eslint-disable-next-line react/no-deprecated
       ReactDOM.render(
         <PopupContent
           id={layer._leaflet_id}
@@ -275,7 +275,7 @@ function Map(props) {
             <PopupContent
               id={i}
               type="point"
-              properties={{ description: 'Geojson point' }}
+              properties={{ properties: 'Geojson point' }}
               onSave={handleSaveProperties}
             />
           </Popup>
@@ -292,7 +292,7 @@ function Map(props) {
             <PopupContent
               id={i}
               type="line"
-              properties={{ description: 'Geojson line' }}
+              properties={{ properties: 'Geojson line' }}
               onSave={handleSaveProperties}
             />
           </Popup>
@@ -309,7 +309,7 @@ function Map(props) {
             <PopupContent
               id={i}
               type="polygon"
-              properties={{ description: 'Geojson polygon' }}
+              properties={{ properties: 'Geojson polygon' }}
               onSave={handleSaveProperties}
             />
           </Popup>
