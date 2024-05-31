@@ -7,6 +7,7 @@ import { EditControl } from 'react-leaflet-draw'
 import { DSManager } from '../data_structure.js'
 import geoJson from '../data/map.json'
 import ReactDOMServer from 'react-dom/server';
+import '../style.css'
 
 var ds = new DSManager();
 var pontos = []
@@ -126,38 +127,94 @@ function Map(props) {
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
   const [currentElement, setCurrentElement] = useState(null);
-  const [currentDescriptions, setCurrentDescriptions] = useState([]);
+  const [currentProperties, setCurrentProperties] = useState([]);
 
-  // eslint-disable-next-line no-unused-vars
-  const handleDescriptionChange = (index, event) => {
-    const newDescriptions = [...currentDescriptions];
-    newDescriptions[index] = event.target.value;
-    setCurrentDescriptions(newDescriptions);
+  const handlePropertiesChange = (key, event) => {
+    setCurrentProperties({
+      ...currentProperties,
+      [key]: event.target.value,
+    });
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const handleSaveDescription = () => {
-    console.log(currentElement)
+  const handleSaveProperties = () => {
+    if (currentElement) {
+      updateProperties(currentElement.id, currentElement.type, currentProperties);
+      setCurrentElement(null);
+      setCurrentProperties({});
+    }
   };
+
+  const addNewProperty = () => {
+    setCurrentProperties({
+      ...currentProperties,
+      ['new_property_' + Object.keys(currentProperties).length]: '',
+    });
+  };
+
+  const updateProperties = (id, type, properties) => {
+    if (type === 'point') {
+      const point = ds.findPoint(id);
+      point.setProperties(properties);
+    }
+    else if (type === 'line') {
+      const line = ds.findLine(id);
+      line.setProperties(properties);
+    }
+    else if (type === 'polygon') {
+      const polygon = ds.findPolygon(id);
+      polygon.setProperties(properties);
+    }
+  };
+
+  const renderPopupContent = (id, type, properties) => (
+    <div className="w-full">
+      {
+        Object.entries(properties).map(([key, value], index) => (
+          <div key={index} className="flex p-1">
+            <input
+              type="text"
+              value={currentElement?.id === id ? currentProperties[key] : value}
+              onChange={event => handlePropertiesChange(key, event)}
+              className="text-center w-36"
+            />
+          </div>
+        ))
+      }
+      <div className="buttons flex justify-around p-1">
+        <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
+        <button className="save border-2 rounded-md p-1" onClick={handleSaveProperties}>Save</button>
+      </div>
+    </div>
+  );
 
   const onCreated = (e) => {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      let point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), 'testes e mais testes')
+      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
       layer.on('click', () => {
         setCurrentElement({ id: layer._leaflet_id, type: 'point' });
-        setCurrentDescriptions(point.getProperties());
-      })
-      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, point.getProperties())))
+        setCurrentProperties(point.getProperties());
+      });
+      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'point', { properties: point.getProperties() })));
     }
 
     if (layerType === 'polyline') {
-      ds.addLine(layer._leaflet_id, layer.getLatLngs())
+      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New line' });
+      layer.on('click', () => {
+        setCurrentElement({ id: layer._leaflet_id, type: 'line' });
+        setCurrentProperties(line.getProperties());
+      });
+      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'line', { properties: line.getProperties() })));
     }
 
     if (layerType === 'polygon') {
-      ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+      let polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'new polygon' })
+      layer.on('click', () => {
+        setCurrentElement({ id: layer._leaflet_id, type: 'polygon' });
+        setCurrentProperties(polygon.getProperties());
+      })
+      layer.bindPopup(ReactDOMServer.renderToStaticMarkup(renderPopupContent(layer._leaflet_id, 'polygon', { properties: polygon.getProperties() })));
     }
 
     console.log('create: ')
@@ -203,94 +260,41 @@ function Map(props) {
     console.log(ds)
   }
 
-  const renderPopupContent = (id, properties) => (
-    <div className=" w-full">
-      {
-        Object.keys(properties).map(key => (
-          <div key={key} className="flex p-1">
-            <input
-              type="text"
-              value={key}
-              onChange={event => handleDescriptionChange(id, event)}
-              className="text-center w-36"
-            />
-            <input
-              type="text"
-              value={properties[key]}
-              onChange={event => handleDescriptionChange(id, event)}
-              className="text-center w-36"
-            />
-          </div>
-        ))
-      }
-
-      <div className="buttons flex justify-around p-1">
-        <button className="row border-2 rounded-md p-1" onClick={console.log('comassim')}>Add Row</button>
-        <button className="save border-2 rounded-md p-1">Save</button>
-      </div>
-
-    </div>
-  );
-
   const addPoints = useMemo(() => (
     <>
-      {pontos.map((ponto, i) =>
-        (
-          <Marker
-            key={i}
-            position={ponto}
-            eventHandlers={{
-              click: () => {
-                console.log('point clicked')
-              },
-            }}
-          >
-            <Popup>que</Popup>
-          </Marker>
-        ),
-      )}
+      {pontos.map((ponto, i) => (
+        <Marker key={i} position={ponto}>
+          <Popup>
+            {renderPopupContent(ponto, 'point', { properties: 'Geojson point' })}
+          </Popup>
+        </Marker>
+      ))}
     </>
-  ), [pontos])
+  ), [pontos]);
 
   const addLines = useMemo(() => (
     <>
-      {linhas.map((linha, i) =>
-        (
-          <Polyline
-            key={i}
-            positions={linha}
-            eventHandlers={{
-              click: () => {
-                console.log('line event handler')
-              },
-            }}
-          >
-            <Popup>Linha do GeoJson</Popup>
-          </Polyline>
-        ),
-      )}
+      {linhas.map((linha, i) => (
+        <Polyline key={i} positions={linha}>
+          <Popup>
+            {renderPopupContent(i, 'line', { properties: 'Geojson line' })}
+          </Popup>
+        </Polyline>
+      ))}
     </>
-  ), [linhas])
+  ), [linhas]);
 
   const addPolygons = useMemo(() => (
     <>
-      {poligonos.map((poligono, i) =>
-        (
-          <Polygon
-            key={i}
-            positions={poligono}
-            eventHandlers={{
-              click: () => {
-                console.log('polygon event handler')
-              },
-            }}
-          >
-            <Popup>Polygon do GeoJson</Popup>
-          </Polygon>
-        ),
-      )}
+      {poligonos.map((poligono, i) => (
+        <Polygon key={i} positions={poligono}>
+          <Popup>
+            {renderPopupContent(i, 'polygon', { properties: 'Geojson polygon' })}
+          </Popup>
+        </Polygon>
+      ))}
     </>
-  ), [poligonos])
+  ), [poligonos]);
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
