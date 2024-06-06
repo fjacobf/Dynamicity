@@ -99,7 +99,6 @@ export default function Map({ file }) {
 
   function Events() {
     const map = useMap();
-
     useEffect(() => {
       const handleLayerAdd = (event) => {
         const { layer } = event;
@@ -155,9 +154,13 @@ export default function Map({ file }) {
     return null;
   }
 
+  const [notification, setNotification] = useState('');
+
   const handleSaveProperties = (id, type, properties) => {
     updateProperties(id, type, properties);
     setCurrentElement(null);
+    setNotification('Properties saved!');
+    setTimeout(() => setNotification(''), 5000);
   };
 
   const updateProperties = (id, type, properties) => {
@@ -286,7 +289,9 @@ export default function Map({ file }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {notification && <div className="notification">{notification}</div>}
 
     </MapContainer>
+
   )
 }
