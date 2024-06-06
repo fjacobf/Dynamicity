@@ -36,10 +36,19 @@ function PopupContent({ id, type, properties, onSave }) {
     setLocalProperties(newProperties);
   };
 
+  const handleKeyChange = (oldKey, event) => {
+    const newProperties = { ...localProperties };
+    const value = newProperties[oldKey];
+    delete newProperties[oldKey];
+    newProperties[event.target.value] = value;
+    setLocalProperties(newProperties);
+  };
+
   const addNewProperty = () => {
+    const newKey = 'new_property_' + Object.keys(localProperties).length;
     setLocalProperties({
       ...localProperties,
-      ['new_property_' + Object.keys(localProperties).length]: '',
+      [newKey]: '',
     });
   };
 
@@ -52,6 +61,12 @@ function PopupContent({ id, type, properties, onSave }) {
       {
         Object.entries(localProperties).map(([key, value], index) => (
           <div key={index} className="flex p-1">
+            <input
+              type="text"
+              value={key}
+              onChange={event => handleKeyChange(key, event)}
+              className="text-center w-36"
+            />
             <input
               type="text"
               value={value}
