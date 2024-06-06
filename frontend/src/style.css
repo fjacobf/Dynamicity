@@ -1,0 +1,22 @@
+input, .save, .row
+ {
+    background-color: gainsboro;
+    border: 1px solid black;
+
+    border-color: black;
+    height: 20px;
+    line-height: 5px;
+    padding: 0px 10px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.save:hover{
+    background-color: #04AA6D;
+    color: white;
+}
+
+.row:hover{
+    background-color: #2196F3;
+    color: white;
+}

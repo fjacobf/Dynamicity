@@ -1,11 +1,13 @@
 /* eslint-disable @stylistic/semi */
-import L from 'leaflet'
-import 'leaflet-draw/dist/leaflet.draw.css'
-import { useEffect, useMemo } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet'
-import { EditControl } from 'react-leaflet-draw'
-import { DSManager } from '../data_structure.js'
-import geoJson from '../data/map.json'
+import L from 'leaflet';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import { useEffect, useMemo, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMap, FeatureGroup, Polygon, Polyline } from 'react-leaflet';
+import { EditControl } from 'react-leaflet-draw';
+import { DSManager } from '../data_structure.js';
+import geoJson from '../data/map.json';
+import ReactDOM from 'react-dom';
+import '../style.css';
 
 var ds = new DSManager();
 var pontos = []
@@ -76,7 +78,7 @@ function Events() {
         const markerLng = layer.getLatLng().lng
         isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
         if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
-          ds.addPoint(layer._leaflet_id, layer.getLatLng())
+          ds.addPoint(layer._leaflet_id, layer.getLatLng(), '')
         }
       }
 
@@ -84,7 +86,7 @@ function Events() {
         const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
         const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
         if (isLineExisting && !fimlines) {
-          ds.addLine(layer._leaflet_id, layer.getLatLngs())
+          ds.addLine(layer._leaflet_id, layer.getLatLngs(), '')
         }
       }
 
@@ -92,7 +94,7 @@ function Events() {
         const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
         const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
         if (isPolygonExisting && !fimpolygons) {
-          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], '')
         }
       }
 
@@ -118,27 +120,109 @@ function Events() {
   return null;
 }
 
+// eslint-disable-next-line react/prop-types
+function PopupContent({ id, type, properties, onSave }) {
+  const [localProperties, setLocalProperties] = useState(properties);
+
+  const handlePropertiesChange = (key, event) => {
+    const newProperties = { ...localProperties };
+    newProperties[key] = event.target.value;
+    setLocalProperties(newProperties);
+  };
+
+  const addNewProperty = () => {
+    setLocalProperties({
+      ...localProperties,
+      ['new_property_' + Object.keys(localProperties).length]: '',
+    });
+  };
+
+  const handleSave = () => {
+    onSave(id, type, localProperties);
+  };
+
+  return (
+    <div className="w-full">
+      {
+        Object.entries(localProperties).map(([key, value], index) => (
+          <div key={index} className="flex p-1">
+            <input
+              type="text"
+              value={value}
+              onChange={event => handlePropertiesChange(key, event)}
+              className="text-center w-36"
+            />
+          </div>
+        ))
+      }
+      <div className="buttons flex justify-around p-1">
+        <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
+        <button className="save border-2 rounded-md p-1" onClick={handleSave}>Save</button>
+      </div>
+    </div>
+  );
+}
+
 function Map(props) {
   // eslint-disable-next-line react/prop-types
   const { selectPosition } = props
   // eslint-disable-next-line react/prop-types
   const locationSelection = [selectPosition?.lat, selectPosition?.lon]
 
-  // Access the Leaflet element ID after the component is mounted
+  // eslint-disable-next-line no-unused-vars
+  const [currentElement, setCurrentElement] = useState(null);
+
+  const handleSaveProperties = (id, type, properties) => {
+    updateProperties(id, type, properties);
+    setCurrentElement(null);
+  };
+
+  const updateProperties = (id, type, properties) => {
+    if (type === 'point') {
+      const point = ds.findPoint(id);
+      point.setProperties(properties);
+    }
+    else if (type === 'line') {
+      const line = ds.findLine(id);
+      line.setProperties(properties);
+    }
+    else if (type === 'polygon') {
+      const polygon = ds.findPolygon(id);
+      polygon.setProperties(properties);
+    }
+  };
 
   const onCreated = (e) => {
     const { layerType, layer } = e
 
+    const createPopup = (layer, type, properties) => {
+      const container = document.createElement('div');
+      // eslint-disable-next-line react/no-deprecated
+      ReactDOM.render(
+        <PopupContent
+          id={layer._leaflet_id}
+          type={type}
+          properties={properties}
+          onSave={handleSaveProperties}
+        />,
+        container,
+      );
+      layer.bindPopup(container);
+    };
+
     if (layerType === 'marker') {
-      ds.addPoint(layer._leaflet_id, layer.getLatLng())
+      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
+      createPopup(layer, 'point', { properties: point.getProperties() });
     }
 
     if (layerType === 'polyline') {
-      ds.addLine(layer._leaflet_id, layer.getLatLngs())
+      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New Line' });
+      createPopup(layer, 'line', { properties: line.getProperties() });
     }
 
     if (layerType === 'polygon') {
-      ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0])
+      const polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'New polygon' });
+      createPopup(layer, 'polygon', { properties: polygon.getProperties() });
     }
     console.log('create: ')
     console.log(ds)
@@ -163,7 +247,7 @@ function Map(props) {
     console.log(ds)
   }
 
-  const handleDelete = (e) => {
+  const onDelete = (e) => {
     const removedLayers = e.layers.getLayers()
 
     removedLayers.forEach((removedLayer) => {
@@ -185,27 +269,54 @@ function Map(props) {
 
   const addPoints = useMemo(() => (
     <>
-      {pontos.map((ponto, i) =>
-        <Marker key={i} position={ponto} />,
-      )}
+      {pontos.map((ponto, i) => (
+        <Marker key={i} position={ponto}>
+          <Popup>
+            <PopupContent
+              id={i}
+              type="point"
+              properties={{ properties: 'Geojson point' }}
+              onSave={handleSaveProperties}
+            />
+          </Popup>
+        </Marker>
+      ))}
     </>
-  ), [pontos])
+  ), [pontos]);
 
   const addLines = useMemo(() => (
     <>
-      {linhas.map((linha, i) =>
-        <Polyline key={i} positions={linha} />,
-      )}
+      {linhas.map((linha, i) => (
+        <Polyline key={i} positions={linha}>
+          <Popup>
+            <PopupContent
+              id={i}
+              type="line"
+              properties={{ properties: 'Geojson line' }}
+              onSave={handleSaveProperties}
+            />
+          </Popup>
+        </Polyline>
+      ))}
     </>
-  ), [linhas])
+  ), [linhas]);
 
   const addPolygons = useMemo(() => (
     <>
-      {poligonos.map((poligono, i) =>
-        <Polygon key={i} positions={poligono} />,
-      )}
+      {poligonos.map((poligono, i) => (
+        <Polygon key={i} positions={poligono}>
+          <Popup>
+            <PopupContent
+              id={i}
+              type="polygon"
+              properties={{ properties: 'Geojson polygon' }}
+              onSave={handleSaveProperties}
+            />
+          </Popup>
+        </Polygon>
+      ))}
     </>
-  ), [poligonos])
+  ), [poligonos]);
 
   return (
     <MapContainer center={[51.505, -0.09]} zoom={3} scrollWheelZoom={true} className="MapContainer min-w-screen min-h-screen z-0">
@@ -218,7 +329,7 @@ function Map(props) {
           position="topleft"
           onCreated={onCreated}
           onEdited={onEdited}
-          onDeleted={handleDelete}
+          onDeleted={onDelete}
           draw={{
             rectangle: false,
           }}
