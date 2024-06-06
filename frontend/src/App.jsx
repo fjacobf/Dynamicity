@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import Map from './components/Map'
-
+import InputFileUpload from './components/InputFileUpload'
 function App() {
-  const [selectPosition] = useState(null)
+  const [file, setFile] = useState(null)
 
   return (
     <>
-      <Map selectPosition={selectPosition} />
+      <InputFileUpload setFile={setFile} />
+      <Map file={file} />
     </>
   )
 }
