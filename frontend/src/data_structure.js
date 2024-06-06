@@ -40,6 +40,7 @@ export class DSManager {
 
   findPoint(id) {
     const point = this.points.find(point => point.getId() === id)
+    if (!point) console.log(`point id:${id} not found`)
     return point
   }
 
@@ -50,7 +51,6 @@ export class DSManager {
   // Method to add a new line
   addLine(id, points, properties) {
     const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
-    properties = 'new line'
     const line = new Line(pointObjects, id, properties)
     this.lines.push(line)
     return line
@@ -104,7 +104,6 @@ export class DSManager {
 
   addPolygon(id, points, properties) {
     const pointObjects = points.map(latlng => new Point(latlng.lat, latlng.lng))
-    properties = 'new polygon'
     let polygon = new Polygon(pointObjects, id, properties)
     this.polygons.push(polygon)
     return polygon
