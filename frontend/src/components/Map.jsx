@@ -27,28 +27,6 @@ const areCoordinatesEqual = (coords1, coords2) => {
   return true;
 };
 
-geoJson.features.forEach((feature) => {
-  if (feature.geometry.type == 'Point') {
-    const [lat, lng] = feature.geometry.coordinates;
-    pontos.push([lat, lng]);
-  }
-  else if (feature.geometry.type == 'LineString') {
-    const lineCoords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
-    if (lineCoords.length > 0) {
-      linhas.push(lineCoords);
-    }
-  }
-  else if (feature.geometry.type == 'Polygon') {
-    var polyCoords = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
-    if (polyCoords.length > 1) {
-      if (areCoordinatesEqual([polyCoords[0]], [polyCoords[polyCoords.length - 1]])) {
-        polyCoords.pop();
-      }
-      poligonos.push(polyCoords);
-    }
-  }
-})
-
 function ResetCenterView(props) {
   const { selectPosition } = props
   const map = useMap()
@@ -64,60 +42,6 @@ function ResetCenterView(props) {
       )
     }
   }, [map, selectPosition])
-}
-
-function Events() {
-  const map = useMap();
-
-  useEffect(() => {
-    const handleLayerAdd = (event) => {
-      const { layer } = event;
-      if (layer instanceof L.Marker) {
-        let isPointExisting = false
-        const markerLat = layer.getLatLng().lat
-        const markerLng = layer.getLatLng().lng
-        isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
-        if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
-          ds.addPoint(layer._leaflet_id, layer.getLatLng(), '')
-        }
-      }
-
-      if (layer instanceof L.Polyline) {
-        const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
-        const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
-        if (isLineExisting && !fimlines) {
-          ds.addLine(layer._leaflet_id, layer.getLatLngs(), '')
-        }
-      }
-
-      if (layer instanceof L.Polygon) {
-        const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
-        const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
-        if (isPolygonExisting && !fimpolygons) {
-          ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], '')
-        }
-      }
-
-      if (pontos.length == ds.points.length && !fimpoints) {
-        fimpoints = true
-      }
-
-      if (linhas.length == ds.lines.length && !fimlines) {
-        fimlines = true
-      }
-
-      if (poligonos.length == ds.polygons.length && !fimpolygons) {
-        fimpolygons = true
-      }
-    };
-
-    map.on('layeradd', handleLayerAdd)
-    return () => {
-      map.off('layeradd', handleLayerAdd)
-    };
-  }, [map]);
-
-  return null;
 }
 
 // eslint-disable-next-line react/prop-types
@@ -172,6 +96,85 @@ function Map(props) {
   // eslint-disable-next-line no-unused-vars
   const [currentElement, setCurrentElement] = useState(null);
 
+  geoJson.features.forEach((feature) => {
+    if (feature.geometry.type == 'Point') {
+      const [lat, lng] = feature.geometry.coordinates;
+      pontos.push([lat, lng]);
+    }
+    else if (feature.geometry.type == 'LineString') {
+      const lineCoords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+      if (lineCoords.length > 0) {
+        linhas.push(lineCoords);
+      }
+    }
+    else if (feature.geometry.type == 'Polygon') {
+      var polyCoords = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
+      if (polyCoords.length > 1) {
+        if (areCoordinatesEqual([polyCoords[0]], [polyCoords[polyCoords.length - 1]])) {
+          polyCoords.pop();
+        }
+        poligonos.push(polyCoords);
+      }
+    }
+  })
+
+  function Events() {
+    const map = useMap();
+
+    useEffect(() => {
+      const handleLayerAdd = (event) => {
+        const { layer } = event;
+        if (layer instanceof L.Marker) {
+          let isPointExisting = false
+          const markerLat = layer.getLatLng().lat
+          const markerLng = layer.getLatLng().lng
+          isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
+          if (layer instanceof L.Marker && isPointExisting && !fimpoints) {
+            var point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'GeoJson Point' })
+            createPopup(layer, 'point', point.getProperties());
+          }
+        }
+
+        if (layer instanceof L.Polyline) {
+          const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
+          const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
+          if (isLineExisting && !fimlines) {
+            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line' })
+            createPopup(layer, 'line', line.getProperties());
+          }
+        }
+
+        if (layer instanceof L.Polygon) {
+          const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
+          const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
+          if (isPolygonExisting && !fimpolygons) {
+            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon' })
+            createPopup(layer, 'polygon', polygon.getProperties());
+          }
+        }
+
+        if (pontos.length == ds.points.length && !fimpoints) {
+          fimpoints = true
+        }
+
+        if (linhas.length == ds.lines.length && !fimlines) {
+          fimlines = true
+        }
+
+        if (poligonos.length == ds.polygons.length && !fimpolygons) {
+          fimpolygons = true
+        }
+      };
+
+      map.on('layeradd', handleLayerAdd)
+      return () => {
+        map.off('layeradd', handleLayerAdd)
+      };
+    }, [map]);
+
+    return null;
+  }
+
   const handleSaveProperties = (id, type, properties) => {
     updateProperties(id, type, properties);
     setCurrentElement(null);
@@ -192,37 +195,37 @@ function Map(props) {
     }
   };
 
+  const createPopup = (layer, type, properties) => {
+    const container = document.createElement('div');
+    // eslint-disable-next-line react/no-deprecated
+    ReactDOM.render(
+      <PopupContent
+        id={layer._leaflet_id}
+        type={type}
+        properties={properties}
+        onSave={handleSaveProperties}
+      />,
+      container,
+    );
+    layer.bindPopup(container);
+  };
+
   const onCreated = (e) => {
     const { layerType, layer } = e
 
-    const createPopup = (layer, type, properties) => {
-      const container = document.createElement('div');
-      // eslint-disable-next-line react/no-deprecated
-      ReactDOM.render(
-        <PopupContent
-          id={layer._leaflet_id}
-          type={type}
-          properties={properties}
-          onSave={handleSaveProperties}
-        />,
-        container,
-      );
-      layer.bindPopup(container);
-    };
-
     if (layerType === 'marker') {
       const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
-      createPopup(layer, 'point', { properties: point.getProperties() });
+      createPopup(layer, 'point', point.getProperties());
     }
 
     if (layerType === 'polyline') {
       const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New Line' });
-      createPopup(layer, 'line', { properties: line.getProperties() });
+      createPopup(layer, 'line', line.getProperties());
     }
 
     if (layerType === 'polygon') {
       const polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'New polygon' });
-      createPopup(layer, 'polygon', { properties: polygon.getProperties() });
+      createPopup(layer, 'polygon', polygon.getProperties());
     }
     console.log('create: ')
     console.log(ds)
@@ -271,14 +274,6 @@ function Map(props) {
     <>
       {pontos.map((ponto, i) => (
         <Marker key={i} position={ponto}>
-          <Popup>
-            <PopupContent
-              id={i}
-              type="point"
-              properties={{ properties: 'Geojson point' }}
-              onSave={handleSaveProperties}
-            />
-          </Popup>
         </Marker>
       ))}
     </>
@@ -288,14 +283,6 @@ function Map(props) {
     <>
       {linhas.map((linha, i) => (
         <Polyline key={i} positions={linha}>
-          <Popup>
-            <PopupContent
-              id={i}
-              type="line"
-              properties={{ properties: 'Geojson line' }}
-              onSave={handleSaveProperties}
-            />
-          </Popup>
         </Polyline>
       ))}
     </>
@@ -305,14 +292,6 @@ function Map(props) {
     <>
       {poligonos.map((poligono, i) => (
         <Polygon key={i} positions={poligono}>
-          <Popup>
-            <PopupContent
-              id={i}
-              type="polygon"
-              properties={{ properties: 'Geojson polygon' }}
-              onSave={handleSaveProperties}
-            />
-          </Popup>
         </Polygon>
       ))}
     </>
