@@ -7,6 +7,8 @@ import { EditControl } from 'react-leaflet-draw';
 import { DSManager } from '../data_structure.js';
 import ReactDOM from 'react-dom';
 import '../style.css';
+import Alert from '@mui/material/Alert';
+import CheckIcon from '@mui/icons-material/Check';
 
 var ds = new DSManager();
 var pontos = []
@@ -29,6 +31,7 @@ const areCoordinatesEqual = (coords1, coords2) => {
 // eslint-disable-next-line react/prop-types
 function PopupContent({ id, type, properties, onSave }) {
   const [localProperties, setLocalProperties] = useState(properties);
+  const [alert, setAlert] = useState(false);
 
   const handlePropertiesChange = (key, event) => {
     const newProperties = { ...localProperties };
@@ -36,22 +39,45 @@ function PopupContent({ id, type, properties, onSave }) {
     setLocalProperties(newProperties);
   };
 
+  const handleKeyChange = (oldKey, event) => {
+    const newProperties = { ...localProperties };
+    const value = newProperties[oldKey];
+    delete newProperties[oldKey];
+    newProperties[event.target.value] = value;
+    setLocalProperties(newProperties);
+  };
+
   const addNewProperty = () => {
+    const newKey = 'new_property_' + Object.keys(localProperties).length;
     setLocalProperties({
       ...localProperties,
-      ['new_property_' + Object.keys(localProperties).length]: '',
+      [newKey]: '',
     });
   };
 
   const handleSave = () => {
-    onSave(id, type, localProperties);
+    onSave(id, type, localProperties, setAlert);
   };
 
   return (
     <div className="w-full">
       {
+        alert && (
+          <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
+            Properties saved!
+          </Alert>
+        )
+        }
+
+      {
         Object.entries(localProperties).map(([key, value], index) => (
           <div key={index} className="flex p-1">
+            <input
+              type="text"
+              value={key}
+              onChange={event => handleKeyChange(key, event)}
+              className="text-center w-36"
+            />
             <input
               type="text"
               value={value}
@@ -70,8 +96,6 @@ function PopupContent({ id, type, properties, onSave }) {
 }
 
 export default function Map({ file }) {
-  // eslint-disable-next-line no-unused-vars
-  const [currentElement, setCurrentElement] = useState(null);
   console.log(file)
   if (file != null) {
     file.features.forEach((feature) => {
@@ -99,7 +123,6 @@ export default function Map({ file }) {
 
   function Events() {
     const map = useMap();
-
     useEffect(() => {
       const handleLayerAdd = (event) => {
         const { layer } = event;
@@ -119,8 +142,9 @@ export default function Map({ file }) {
           const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
           const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
           if (isLineExisting && !fimlines) {
-            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line' })
+            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10 })
             createPopup(layer, 'line', line.getProperties());
+            setStyle(layer, line)
           }
         }
 
@@ -128,8 +152,9 @@ export default function Map({ file }) {
           const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
           const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
           if (isPolygonExisting && !fimpolygons) {
-            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon' })
+            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon', color: '#ee0202' })
             createPopup(layer, 'polygon', polygon.getProperties());
+            setStyle(layer, polygon)
           }
         }
 
@@ -155,9 +180,10 @@ export default function Map({ file }) {
     return null;
   }
 
-  const handleSaveProperties = (id, type, properties) => {
+  const handleSaveProperties = (id, type, properties, setAlert) => {
     updateProperties(id, type, properties);
-    setCurrentElement(null);
+    setAlert(true);
+    setTimeout(() => setAlert(false), 3000)
   };
 
   const updateProperties = (id, type, properties) => {
@@ -188,6 +214,23 @@ export default function Map({ file }) {
       container,
     );
     layer.bindPopup(container);
+  };
+
+  const setStyle = (layer, geometry) => {
+    var properties = geometry.getProperties();
+    if (properties.color) {
+      layer.setStyle({
+        fillColor: properties.color,
+      })
+      layer.setStyle({
+        color: properties.color,
+      })
+    }
+    if (properties.weight) {
+      layer.setStyle({
+        weight: properties.weight,
+      })
+    }
   };
 
   const onCreated = (e) => {
@@ -288,5 +331,6 @@ export default function Map({ file }) {
       />
 
     </MapContainer>
+
   )
 }
