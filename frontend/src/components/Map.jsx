@@ -142,8 +142,9 @@ export default function Map({ file }) {
           const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
           const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
           if (isLineExisting && !fimlines) {
-            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line' })
+            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10 })
             createPopup(layer, 'line', line.getProperties());
+            setStyle(layer, line)
           }
         }
 
@@ -151,8 +152,9 @@ export default function Map({ file }) {
           const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
           const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
           if (isPolygonExisting && !fimpolygons) {
-            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon' })
+            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon', color: '#ee0202' })
             createPopup(layer, 'polygon', polygon.getProperties());
+            setStyle(layer, polygon)
           }
         }
 
@@ -212,6 +214,23 @@ export default function Map({ file }) {
       container,
     );
     layer.bindPopup(container);
+  };
+
+  const setStyle = (layer, geometry) => {
+    var properties = geometry.getProperties();
+    if (properties.color) {
+      layer.setStyle({
+        fillColor: properties.color,
+      })
+      layer.setStyle({
+        color: properties.color,
+      })
+    }
+    if (properties.weight) {
+      layer.setStyle({
+        weight: properties.weight,
+      })
+    }
   };
 
   const onCreated = (e) => {
