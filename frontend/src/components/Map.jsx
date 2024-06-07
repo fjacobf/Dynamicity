@@ -7,6 +7,8 @@ import { EditControl } from 'react-leaflet-draw';
 import { DSManager } from '../data_structure.js';
 import ReactDOM from 'react-dom';
 import '../style.css';
+import Alert from '@mui/material/Alert';
+import CheckIcon from '@mui/icons-material/Check';
 
 var ds = new DSManager();
 var pontos = []
@@ -29,6 +31,7 @@ const areCoordinatesEqual = (coords1, coords2) => {
 // eslint-disable-next-line react/prop-types
 function PopupContent({ id, type, properties, onSave }) {
   const [localProperties, setLocalProperties] = useState(properties);
+  const [alert, setAlert] = useState(false);
 
   const handlePropertiesChange = (key, event) => {
     const newProperties = { ...localProperties };
@@ -53,11 +56,19 @@ function PopupContent({ id, type, properties, onSave }) {
   };
 
   const handleSave = () => {
-    onSave(id, type, localProperties);
+    onSave(id, type, localProperties, setAlert);
   };
 
   return (
     <div className="w-full">
+      {
+        alert && (
+          <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
+            Properties saved!
+          </Alert>
+        )
+        }
+
       {
         Object.entries(localProperties).map(([key, value], index) => (
           <div key={index} className="flex p-1">
@@ -85,8 +96,6 @@ function PopupContent({ id, type, properties, onSave }) {
 }
 
 export default function Map({ file }) {
-  // eslint-disable-next-line no-unused-vars
-  const [currentElement, setCurrentElement] = useState(null);
   console.log(file)
   if (file != null) {
     file.features.forEach((feature) => {
@@ -169,13 +178,10 @@ export default function Map({ file }) {
     return null;
   }
 
-  const [notification, setNotification] = useState('');
-
-  const handleSaveProperties = (id, type, properties) => {
+  const handleSaveProperties = (id, type, properties, setAlert) => {
     updateProperties(id, type, properties);
-    setCurrentElement(null);
-    setNotification('Properties saved!');
-    setTimeout(() => setNotification(''), 5000);
+    setAlert(true);
+    setTimeout(() => setAlert(false), 3000)
   };
 
   const updateProperties = (id, type, properties) => {
@@ -304,7 +310,6 @@ export default function Map({ file }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {notification && <div className="notification">{notification}</div>}
 
     </MapContainer>
 
