@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom';
 import '../style.css';
 import Alert from '@mui/material/Alert';
 import CheckIcon from '@mui/icons-material/Check';
+import { } from 'leaflet';
 
 var ds = new DSManager();
 var pontos = []
@@ -31,8 +32,6 @@ const areCoordinatesEqual = (coords1, coords2) => {
 // eslint-disable-next-line react/prop-types
 
 export default function Map({ file }) {
-  console.log(file)
-
   if (file != null) {
     file.features.forEach((feature) => {
       if (feature.geometry.type == 'Point') {
@@ -130,18 +129,15 @@ export default function Map({ file }) {
 
   const setStyle = (layer, properties) => {
     console.log(properties)
-    if (properties.color) {
-      layer.setStyle({
-        fillColor: properties.color,
-      })
-      layer.setStyle({
-        color: properties.color,
-      })
-    }
-    if (properties.weight) {
-      layer.setStyle({
-        weight: properties.weight,
-      })
+    for (var key of Object.keys(properties)) {
+      try {
+        var x = {};
+        x[key] = properties[key];
+        layer.setStyle(x)
+      }
+      catch (e) { /* empty */ }
+
+      console.log(key);
     }
   };
 
