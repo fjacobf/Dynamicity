@@ -29,7 +29,7 @@ const areCoordinatesEqual = (coords1, coords2) => {
 };
 
 // eslint-disable-next-line react/prop-types
-function PopupContent({ id, type, properties, onSave }) {
+function PopupContent({ id, type, properties, onSave, layer }) {
   const [localProperties, setLocalProperties] = useState(properties);
   const [alert, setAlert] = useState(false);
 
@@ -57,6 +57,11 @@ function PopupContent({ id, type, properties, onSave }) {
 
   const handleSave = () => {
     onSave(id, type, localProperties, setAlert);
+    setTimeout(() => setAlert(false), 700);
+    // Close the popup 0.5 seconds after saving
+    setTimeout(() => {
+      layer.closePopup();
+    }, 500);
   };
 
   return (
@@ -210,6 +215,8 @@ export default function Map({ file }) {
         type={type}
         properties={properties}
         onSave={handleSaveProperties}
+        layer={layer} // Pass the layer to PopupContent
+
       />,
       container,
     );
@@ -307,6 +314,8 @@ export default function Map({ file }) {
           onDeleted={onDelete}
           draw={{
             rectangle: false,
+            circle: false,
+            circlemarker: false,
           }}
         />
 
