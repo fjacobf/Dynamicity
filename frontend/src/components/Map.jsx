@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom';
 import '../style.css';
 import Alert from '@mui/material/Alert';
 import CheckIcon from '@mui/icons-material/Check';
+import { } from 'leaflet';
 
 var ds = new DSManager();
 var pontos = []
@@ -29,74 +30,8 @@ const areCoordinatesEqual = (coords1, coords2) => {
 };
 
 // eslint-disable-next-line react/prop-types
-function PopupContent({ id, type, properties, onSave }) {
-  const [localProperties, setLocalProperties] = useState(properties);
-  const [alert, setAlert] = useState(false);
-
-  const handlePropertiesChange = (key, event) => {
-    const newProperties = { ...localProperties };
-    newProperties[key] = event.target.value;
-    setLocalProperties(newProperties);
-  };
-
-  const handleKeyChange = (oldKey, event) => {
-    const newProperties = { ...localProperties };
-    const value = newProperties[oldKey];
-    delete newProperties[oldKey];
-    newProperties[event.target.value] = value;
-    setLocalProperties(newProperties);
-  };
-
-  const addNewProperty = () => {
-    const newKey = 'new_property_' + Object.keys(localProperties).length;
-    setLocalProperties({
-      ...localProperties,
-      [newKey]: '',
-    });
-  };
-
-  const handleSave = () => {
-    onSave(id, type, localProperties, setAlert);
-  };
-
-  return (
-    <div className="w-full">
-      {
-        alert && (
-          <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
-            Properties saved!
-          </Alert>
-        )
-        }
-
-      {
-        Object.entries(localProperties).map(([key, value], index) => (
-          <div key={index} className="flex p-1">
-            <input
-              type="text"
-              value={key}
-              onChange={event => handleKeyChange(key, event)}
-              className="text-center w-36"
-            />
-            <input
-              type="text"
-              value={value}
-              onChange={event => handlePropertiesChange(key, event)}
-              className="text-center w-36"
-            />
-          </div>
-        ))
-      }
-      <div className="buttons flex justify-around p-1">
-        <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
-        <button className="save border-2 rounded-md p-1" onClick={handleSave}>Save</button>
-      </div>
-    </div>
-  );
-}
 
 export default function Map({ file }) {
-  console.log(file)
   if (file != null) {
     file.features.forEach((feature) => {
       if (feature.geometry.type == 'Point') {
@@ -121,6 +56,91 @@ export default function Map({ file }) {
     })
   }
 
+  function PopupContent({ id, type, properties, onSave, layer }) {
+    const [localProperties, setLocalProperties] = useState(properties);
+    const [alert, setAlert] = useState(false);
+
+    const handlePropertiesChange = (key, event) => {
+      const newProperties = { ...localProperties };
+      newProperties[key] = event.target.value;
+      setLocalProperties(newProperties);
+    };
+
+    const handleKeyChange = (oldKey, event) => {
+      const newProperties = { ...localProperties };
+      const value = newProperties[oldKey];
+      delete newProperties[oldKey];
+      newProperties[event.target.value] = value;
+      setLocalProperties(newProperties);
+    };
+
+    const addNewProperty = () => {
+      const newKey = 'new_property_' + Object.keys(localProperties).length;
+      setLocalProperties({
+        ...localProperties,
+        [newKey]: '',
+      });
+    };
+
+    const handleSave = () => {
+      onSave(id, type, localProperties, setAlert);
+      setTimeout(() => setAlert(false), 700);
+      // Close the popup 0.5 seconds after saving
+      setStyle(layer, localProperties)
+      setTimeout(() => {
+        layer.closePopup();
+      }, 500);
+    };
+
+    return (
+      <div className="w-full">
+        {
+          alert && (
+            <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
+              Properties saved!
+            </Alert>
+          )
+          }
+        {
+          Object.entries(localProperties).map(([key, value], index) => (
+            <div key={index} className="flex p-1">
+              <input
+                type="text"
+                value={key}
+                onChange={event => handleKeyChange(key, event)}
+                className="text-center w-36"
+              />
+              <input
+                type="text"
+                value={value}
+                onChange={event => handlePropertiesChange(key, event)}
+                className="text-center w-36"
+              />
+            </div>
+          ))
+        }
+        <div className="buttons flex justify-around p-1">
+          <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
+          <button className="save border-2 rounded-md p-1" onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    );
+  }
+
+  const setStyle = (layer, properties) => {
+    console.log(properties)
+    for (var key of Object.keys(properties)) {
+      try {
+        var x = {};
+        x[key] = properties[key];
+        layer.setStyle(x)
+      }
+      catch (e) { /* empty */ }
+
+      console.log(key);
+    }
+  };
+
   function Events() {
     const map = useMap();
     useEffect(() => {
@@ -132,7 +152,6 @@ export default function Map({ file }) {
           const markerLng = layer.getLatLng().lng
           isPointExisting = pontos.some(p => Math.abs(p[0] - markerLat) < 0.0001 && Math.abs(p[1] - markerLng) < 0.0001)
           if (isPointExisting && !fimpoints) {
-            console.log('wtf')
             var point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'GeoJson Point' })
             createPopup(layer, 'point', point.getProperties());
           }
@@ -144,7 +163,7 @@ export default function Map({ file }) {
           if (isLineExisting && !fimlines) {
             var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10 })
             createPopup(layer, 'line', line.getProperties());
-            setStyle(layer, line)
+            setStyle(layer, line.getProperties())
           }
         }
 
@@ -154,7 +173,7 @@ export default function Map({ file }) {
           if (isPolygonExisting && !fimpolygons) {
             var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon', color: '#ee0202' })
             createPopup(layer, 'polygon', polygon.getProperties());
-            setStyle(layer, polygon)
+            setStyle(layer, polygon.getProperties())
           }
         }
 
@@ -210,34 +229,19 @@ export default function Map({ file }) {
         type={type}
         properties={properties}
         onSave={handleSaveProperties}
+        layer={layer} // Pass the layer to PopupContent
+
       />,
       container,
     );
     layer.bindPopup(container);
   };
 
-  const setStyle = (layer, geometry) => {
-    var properties = geometry.getProperties();
-    if (properties.color) {
-      layer.setStyle({
-        fillColor: properties.color,
-      })
-      layer.setStyle({
-        color: properties.color,
-      })
-    }
-    if (properties.weight) {
-      layer.setStyle({
-        weight: properties.weight,
-      })
-    }
-  };
-
   const onCreated = (e) => {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
+      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point', color: '#0000ff' });
       createPopup(layer, 'point', point.getProperties());
     }
 
@@ -307,6 +311,8 @@ export default function Map({ file }) {
           onDeleted={onDelete}
           draw={{
             rectangle: false,
+            circle: false,
+            circlemarker: false,
           }}
         />
 
