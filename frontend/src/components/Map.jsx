@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom';
 import '../style.css';
 import Alert from '@mui/material/Alert';
 import CheckIcon from '@mui/icons-material/Check';
-import { } from 'leaflet';
+import ColorPicker from './ColorPicker.jsx';
 
 var ds = new DSManager();
 var pontos = []
@@ -60,9 +60,9 @@ export default function Map({ file }) {
     const [localProperties, setLocalProperties] = useState(properties);
     const [alert, setAlert] = useState(false);
 
-    const handlePropertiesChange = (key, event) => {
+    const handlePropertiesChange = (key, value) => {
       const newProperties = { ...localProperties };
-      newProperties[key] = event.target.value;
+      newProperties[key] = value;
       setLocalProperties(newProperties);
     };
 
@@ -108,20 +108,22 @@ export default function Map({ file }) {
                 type="text"
                 value={key}
                 onChange={event => handleKeyChange(key, event)}
-                className="text-center w-36"
+                className="text-center w-36 border h-6 rounded-md"
               />
+              {(key == 'fillColor' || key == 'color')
+              && <ColorPicker chave={key} value={value} func={handlePropertiesChange} />}
               <input
                 type="text"
                 value={value}
-                onChange={event => handlePropertiesChange(key, event)}
-                className="text-center w-36"
+                onChange={event => handlePropertiesChange(key, event.target.value)}
+                className="text-center w-36 border ml-3 h-6 rounded-md"
               />
             </div>
           ))
         }
         <div className="buttons flex justify-around p-1">
-          <button className="row border-2 rounded-md p-1" onClick={addNewProperty}>Add Row</button>
-          <button className="save border-2 rounded-md p-1" onClick={handleSave}>Save</button>
+          <button className=" border-black border-2 rounded-md p-1 hover:bg-green-400 hover:text-white" onClick={addNewProperty}>Add Row</button>
+          <button className="border-black border-2 rounded-md p-1 hover:bg-blue-400 hover:text-white" onClick={handleSave}>Save</button>
         </div>
       </div>
     );
@@ -136,8 +138,6 @@ export default function Map({ file }) {
         layer.setStyle(x)
       }
       catch (e) { /* empty */ }
-
-      console.log(key);
     }
   };
 
@@ -161,7 +161,7 @@ export default function Map({ file }) {
           const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
           const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
           if (isLineExisting && !fimlines) {
-            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10 })
+            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10, color: '#0000FF' })
             createPopup(layer, 'line', line.getProperties());
             setStyle(layer, line.getProperties())
           }
@@ -171,7 +171,7 @@ export default function Map({ file }) {
           const newPolyCoords = layer.getLatLngs()[0].map(latlng => [latlng.lat, latlng.lng])
           const isPolygonExisting = poligonos.some(polygon => areCoordinatesEqual(polygon, newPolyCoords))
           if (isPolygonExisting && !fimpolygons) {
-            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon', color: '#ee0202' })
+            var polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'GeoJson Polygon', color: '#0000FF', fillColor: '#0000FF' })
             createPopup(layer, 'polygon', polygon.getProperties());
             setStyle(layer, polygon.getProperties())
           }
@@ -241,17 +241,17 @@ export default function Map({ file }) {
     const { layerType, layer } = e
 
     if (layerType === 'marker') {
-      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point', color: '#0000ff' });
+      const point = ds.addPoint(layer._leaflet_id, layer.getLatLng(), { properties: 'New point' });
       createPopup(layer, 'point', point.getProperties());
     }
 
     if (layerType === 'polyline') {
-      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New Line' });
+      const line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'New Line', color: '#0000FF' });
       createPopup(layer, 'line', line.getProperties());
     }
 
     if (layerType === 'polygon') {
-      const polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'New polygon' });
+      const polygon = ds.addPolygon(layer._leaflet_id, layer.getLatLngs()[0], { properties: 'New polygon', color: '#0000FF', fillColor: '#0000FF' });
       createPopup(layer, 'polygon', polygon.getProperties());
     }
     console.log('create: ')
