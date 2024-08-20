@@ -34,9 +34,9 @@ const areCoordinatesEqual = (coords1, coords2) => {
 export default function Map({ file }) {
   if (file != null) {
     file.features.forEach((feature) => {
-      if (feature.geometry.type == 'Point') {
+      if (feature.geometry.type == 'Point' && feature.properties.public_transport == 'stop_position') {
         const [lat, lng] = feature.geometry.coordinates;
-        pontos.push([lat, lng]);
+        pontos.push([lng, lat]);
       }
       else if (feature.geometry.type == 'LineString') {
         const lineCoords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Leaflet uses [lat, lng]
@@ -161,7 +161,7 @@ export default function Map({ file }) {
           const newLineCoords = layer.getLatLngs().map(latlng => [latlng.lat, latlng.lng])
           const isLineExisting = linhas.some(line => areCoordinatesEqual(line, newLineCoords))
           if (isLineExisting && !fimlines) {
-            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 10, color: '#0000FF' })
+            var line = ds.addLine(layer._leaflet_id, layer.getLatLngs(), { properties: 'GeoJson Line', weight: 5, color: '#ff0000' })
             createPopup(layer, 'line', line.getProperties());
             setStyle(layer, line.getProperties())
           }

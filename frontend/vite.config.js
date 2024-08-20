@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     eslintPlugin(),
   ],
+  base: '/Dynamicity/',
   server: {
     host: true,
     port: 8000,
